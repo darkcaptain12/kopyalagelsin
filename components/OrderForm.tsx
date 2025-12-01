@@ -8,16 +8,19 @@ import { calculateTotals } from "@/lib/pricing";
 import type { Size, Color, Side, BindingType } from "@/lib/pricing";
 import type { Coupon } from "@/lib/couponsStore";
 import { calculateDiscount } from "@/lib/discounts";
+import type { User } from "@/lib/usersStore";
 
-interface User {
+// API'den dönen user objesi için tip
+interface APIUser {
   id: string;
   name: string;
   email: string;
+  referralCode?: string;
 }
 
 export default function OrderForm() {
   const [config, setConfig] = useState<AppConfig | null>(null);
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<APIUser | null>(null);
   const [userLoading, setUserLoading] = useState(true);
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [selectedCouponCode, setSelectedCouponCode] = useState<string>("");
@@ -116,9 +119,21 @@ export default function OrderForm() {
             // Base amount before KDV (print + binding + shipping)
             const baseAmount = breakdown.printCost + breakdown.bindingCost + breakdown.shippingCost;
             
+            // Create full User object from API response for calculateDiscount
+            // calculateDiscount only needs user.id, so we create a minimal User object
+            const fullUser: User = {
+              id: user.id,
+              name: user.name,
+              email: user.email,
+              createdAt: new Date().toISOString(), // Default value since not available from API
+              passwordHash: "", // Not needed for discount calculation
+              referralCode: user.referralCode || "",
+              referredByUserId: null,
+            };
+            
             const discountResult = calculateDiscount({
               baseAmount,
-              user,
+              user: fullUser,
               coupon: selectedCoupon,
               config,
               now: new Date(),

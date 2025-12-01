@@ -161,7 +161,9 @@ export function calculateTotals(config: AppConfig | PricingConfig, params: Prici
   const subtotal = printCost + bindingCost + shippingCost;
   
   // KDV hesaplama
-  const kdvRate = config.kdvRate || 0;
+  // Support both AppConfig and PricingConfig for backward compatibility
+  const pricingConfig = "pricing" in config ? config.pricing : config;
+  const kdvRate = pricingConfig.kdvRate || 0;
   const tax = subtotal * kdvRate;
   
   // KDV dahil toplam

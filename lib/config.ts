@@ -219,6 +219,7 @@ export async function getConfig(): Promise<AppConfig> {
       const migrated: AppConfig = {
         pricing: parsed as PricingConfig,
         marketing: getDefaultMarketingConfig(),
+        ui: getDefaultUIConfig(),
       };
       await writeFile(CONFIG_FILE, JSON.stringify(migrated, null, 2), "utf-8");
       return migrated;

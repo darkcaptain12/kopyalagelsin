@@ -32,6 +32,17 @@ export default function Footer() {
             backgroundColor: "#3b82f6",
             textColor: "#ffffff",
           },
+          banner: {
+            title: "Öğrenciler için uygun fiyatlı dijital çıktı hizmeti",
+            subtitle: "PDF dosyanı yükle, baskı seçeneklerini seç, online öde, çıktın kapına gelsin.",
+            buttonText: "Çıktı Siparişi Ver",
+            buttonLink: "#siparis",
+            backgroundColor: "#2563eb",
+            backgroundColorEnd: "#1e40af",
+            textColor: "#ffffff",
+            imageEnabled: true,
+            imagePath: "/logo/favicon.png",
+          },
         });
       });
   }, []);

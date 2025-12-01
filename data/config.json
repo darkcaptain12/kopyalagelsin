@@ -1,0 +1,95 @@
+{
+  "pricing": {
+    "a4": {
+      "blackWhite": {
+        "single": {
+          "upTo100": 0.75,
+          "over100": 0.65
+        },
+        "double": {
+          "upTo100": 0.6,
+          "over100": 0.5
+        }
+      },
+      "color": {
+        "single": {
+          "upTo100": 1.85,
+          "over100": 1.6
+        },
+        "double": {
+          "upTo100": 1.75,
+          "over100": 1.5
+        }
+      }
+    },
+    "a3Multiplier": 2,
+    "shipping": [
+      {
+        "maxPages": 500,
+        "price": 125
+      },
+      {
+        "maxPages": 1000,
+        "price": 180
+      },
+      {
+        "maxPages": 1500,
+        "price": 220
+      },
+      {
+        "maxPages": 2000,
+        "price": 240
+      },
+      {
+        "maxPages": null,
+        "price": 0
+      }
+    ],
+    "binding": {
+      "spiral": {
+        "upTo10": 40,
+        "over10": 30
+      },
+      "american": {
+        "upTo10": 35,
+        "over10": 30
+      }
+    },
+    "kdvRate": 0.2
+  },
+  "marketing": {
+    "enableSignupPopup": true,
+    "enableMemberWelcomeDiscount": true,
+    "memberWelcomeDiscountPercent": 5,
+    "memberWelcomeValidFrom": null,
+    "memberWelcomeValidUntil": null,
+    "enableReferralProgram": true,
+    "referralDiscountPercent": 5,
+    "referralValidFrom": null,
+    "referralValidUntil": null
+  },
+  "ui": {
+    "announcementBar": {
+      "enabled": true,
+      "text": "🎉 Yeni üyelere özel %5 indirim! Hemen üye olun ve kuponunuzu kazanın.",
+      "link": "/uye-ol",
+      "backgroundColor": "#3b82f6",
+      "textColor": "#ffffff"
+    },
+    "footer": {
+      "description": "Öğrenciler için uygun fiyatlı dijital çıktı hizmeti. PDF dosyanızı yükleyin, çıktınızı alın.",
+      "phone": "+90 (549) 350 60 40",
+      "email": "info@kopyalagelsin.com",
+      "address": "Üçevler Mh.. 70.Sk No:67, 16120 Ni̇lüfer/Bursa",
+      "copyright": "© 2025 Krg Grup. Tüm hakları saklıdır."
+    },
+    "banner": {
+      "imageEnabled": true,
+      "imagePath": "/banners/banner-0bcb5404-c039-4959-9000-aa3628735001.png",
+      "title": "",
+      "subtitle": "    \n\n\n\n\n\n\n",
+      "buttonText": "Çıktı Siparişi Ver",
+      "buttonLink": "#siparis"
+    }
+  }
+}

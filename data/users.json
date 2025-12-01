@@ -1,0 +1,11 @@
+[
+  {
+    "id": "a45035e6-a9aa-4954-9945-9a2509642aed",
+    "createdAt": "2025-12-01T13:17:13.434Z",
+    "name": "emir sümer",
+    "email": "emirsumer94@gmail.com",
+    "passwordHash": "$2a$10$rSWoASzpLHCnGf5vY6sHi.yOK8x0lFHlixXBfbpXrMAjmzdRVWvKW",
+    "referralCode": "EMIR9999",
+    "referredByUserId": null
+  }
+]

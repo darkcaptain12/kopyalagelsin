@@ -15,7 +15,7 @@ export interface DiscountResult {
   discountPercent: number;
   discountAmount: number;
   reason: "WELCOME" | "REFERRAL" | "COUPON" | null;
-  appliedCouponCode?: string | null;
+  appliedCouponCode: string | null;
 }
 
 function isCouponValid(coupon: Coupon, now: Date): boolean {

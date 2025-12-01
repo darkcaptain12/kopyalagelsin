@@ -6,7 +6,7 @@ import { createOrder } from "@/lib/ordersStore";
 import { getSessionFromRequest } from "@/lib/auth";
 import { getUserById } from "@/lib/usersStore";
 import { getCouponByCode } from "@/lib/couponsStore";
-import { calculateDiscount } from "@/lib/discounts";
+import { calculateDiscount, type DiscountResult } from "@/lib/discounts";
 
 const PAYTR_MERCHANT_ID = process.env.PAYTR_MERCHANT_ID || "";
 const PAYTR_MERCHANT_KEY = process.env.PAYTR_MERCHANT_KEY || "";
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
     const baseAmount = calculatedBreakdown.printCost + calculatedBreakdown.bindingCost + calculatedBreakdown.shippingCost;
 
     // Apply discount if coupon provided
-    let discountResult = {
+    let discountResult: DiscountResult = {
       applied: false,
       discountPercent: 0,
       discountAmount: 0,

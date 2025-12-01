@@ -17,7 +17,7 @@ export default function KVKKPage() {
 
             <h2 className="text-2xl font-semibold mt-6 mb-3">1. Veri Sorumlusu</h2>
             <p className="text-gray-700">
-              Kişisel verileriniz, 6698 sayılı KVKK uyarınca "Veri Sorumlusu" sıfatıyla kopyalagelsin tarafından işlenecektir.
+              Kişisel verileriniz, 6698 sayılı KVKK uyarınca &quot;Veri Sorumlusu&quot; sıfatıyla kopyalagelsin tarafından işlenecektir.
             </p>
 
             <h2 className="text-2xl font-semibold mt-6 mb-3">2. İşlenen Kişisel Veriler</h2>
@@ -50,7 +50,7 @@ export default function KVKKPage() {
 
             <h2 className="text-2xl font-semibold mt-6 mb-3">5. Haklarınız</h2>
             <p className="text-gray-700">
-              KVKK'nın 11. maddesi uyarınca, kişisel verilerinizle ilgili olarak aşağıdaki haklara sahipsiniz:
+              KVKK&apos;nın 11. maddesi uyarınca, kişisel verilerinizle ilgili olarak aşağıdaki haklara sahipsiniz:
             </p>
             <ul className="list-disc list-inside text-gray-700 space-y-2 ml-4">
               <li>Kişisel veri işlenip işlenmediğini öğrenme</li>

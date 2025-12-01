@@ -924,7 +924,7 @@ export default function AdminPage() {
                     className="mr-2"
                   />
                   <label className="text-sm text-gray-700">
-                    Üyelik pop-up'ını etkinleştir
+                    Üyelik pop-up&apos;ını etkinleştir
                   </label>
                 </div>
               </div>

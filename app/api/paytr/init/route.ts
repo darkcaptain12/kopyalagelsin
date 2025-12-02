@@ -137,8 +137,11 @@ export async function POST(request: NextRequest) {
     const currency = "TL";
     const testMode = PAYTR_TEST_MODE ? "1" : "0";
 
-    // Get base URL from request
-    const baseUrl = request.headers.get("origin") || "http://localhost:3000";
+    // Get base URL from request or environment variable
+    const baseUrl = 
+      request.headers.get("origin") || 
+      process.env.NEXT_PUBLIC_APP_URL || 
+      "http://localhost:3000";
     const callbackUrl = `${baseUrl}/api/paytr/callback`;
     const returnUrl = `${baseUrl}/success?orderId=${order.id}`;
 

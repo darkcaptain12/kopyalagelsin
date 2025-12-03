@@ -564,10 +564,14 @@ export default function OrderForm() {
                         onChange={(e) => handleRadioChange("side", e.target.value)}
                         className="sr-only"
                       />
-                      <svg className="w-10 h-10 mb-2 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M4 3a2 2 0 100 4h12a2 2 0 100-4H4z" />
-                        <path fillRule="evenodd" d="M3 8h14v7a2 2 0 01-2 2H5a2 2 0 01-2-2V8zm5 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" clipRule="evenodd" />
-                      </svg>
+                      <div className="relative w-16 h-16 mb-2">
+                        <Image
+                          src="/urun_tipleri/tek_yön.png"
+                          alt="Tek Yön"
+                          fill
+                          className="object-contain"
+                        />
+                      </div>
                       <span className="font-semibold">Tek Yön</span>
                       {formData.side === "tek" && (
                         <div className="absolute top-2 right-2">
@@ -592,9 +596,14 @@ export default function OrderForm() {
                         onChange={(e) => handleRadioChange("side", e.target.value)}
                         className="sr-only"
                       />
-                      <svg className="w-10 h-10 mb-2 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M4 3a2 2 0 012 2v10a2 2 0 01-2 2h12a2 2 0 01-2-2V5a2 2 0 012-2h-4a2 2 0 00-2-2H6a2 2 0 00-2 2z" />
-                      </svg>
+                      <div className="relative w-16 h-16 mb-2">
+                        <Image
+                          src="/urun_tipleri/çift_yön.png"
+                          alt="Çift Yön"
+                          fill
+                          className="object-contain"
+                        />
+                      </div>
                       <span className="font-semibold">Çift Yön</span>
                       {formData.side === "cift" && (
                         <div className="absolute top-2 right-2">

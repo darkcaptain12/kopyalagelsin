@@ -85,11 +85,13 @@ export async function writeBlobJson<T>(
     const jsonString = JSON.stringify(data, null, 2);
     const buffer = Buffer.from(jsonString, "utf-8");
     
-    // Use put without addRandomSuffix to overwrite existing file
+    // Use put with allowOverwrite to overwrite existing file
+    // Vercel Blob requires allowOverwrite: true to overwrite existing blobs
     const blob = await put(blobPath, buffer, {
       access: "public",
       contentType: "application/json",
       addRandomSuffix: false,
+      allowOverwrite: true, // Allow overwriting existing blobs
     });
     
     return blob.url;

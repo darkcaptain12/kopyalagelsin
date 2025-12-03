@@ -45,6 +45,14 @@ export async function createPaytrIframeToken(
 ): Promise<PaytrCreateTokenResult> {
   // Validate environment variables
   if (!PAYTR_MERCHANT_ID || !PAYTR_MERCHANT_KEY || !PAYTR_MERCHANT_SALT) {
+    console.error("PayTR environment variables check:", {
+      hasMerchantId: !!PAYTR_MERCHANT_ID,
+      hasMerchantKey: !!PAYTR_MERCHANT_KEY,
+      hasMerchantSalt: !!PAYTR_MERCHANT_SALT,
+      merchantIdLength: PAYTR_MERCHANT_ID?.length || 0,
+      merchantKeyLength: PAYTR_MERCHANT_KEY?.length || 0,
+      merchantSaltLength: PAYTR_MERCHANT_SALT?.length || 0,
+    });
     throw new Error("PayTR yapılandırması eksik. Lütfen ortam değişkenlerini kontrol edin.");
   }
 
@@ -68,8 +76,8 @@ export async function createPaytrIframeToken(
   const cleanBaseUrl = baseUrl.replace(/\/$/, "");
   
   // Prepare all fields as strings for PayTR
-  const merchantOid = input.merchantOid;
-  const email = input.email;
+  const merchantOid = input.merchantOid.trim();
+  const email = input.email.trim();
   const currency = input.currency || "TL";
   const testMode = PAYTR_TEST_MODE ? "1" : "0";
   const noInstallment = String(input.noInstallment ?? 0);
@@ -86,10 +94,26 @@ export async function createPaytrIframeToken(
   
   // Build hash string EXACTLY as per PayTR's official Node.js example
   // Format: merchant_id + merchant_oid + email + payment_amount + merchant_salt
-  const hashStr = `${PAYTR_MERCHANT_ID}${merchantOid}${email}${paymentAmountKurus}${PAYTR_MERCHANT_SALT}`;
+  // IMPORTANT: All values must be strings, no spaces, no newlines
+  const hashStr = String(PAYTR_MERCHANT_ID) + String(merchantOid) + String(email) + String(paymentAmountKurus) + String(PAYTR_MERCHANT_SALT);
   
   // Calculate hash: SHA256 then Base64 encode
-  const paytrToken = crypto.createHash("sha256").update(hashStr).digest("base64");
+  const paytrToken = crypto.createHash("sha256").update(hashStr, "utf8").digest("base64");
+  
+  // Debug logging (only in test mode or when needed)
+  if (PAYTR_TEST_MODE) {
+    console.log("PayTR hash calculation debug:", {
+      merchantId: PAYTR_MERCHANT_ID,
+      merchantOid,
+      email,
+      paymentAmountKurus,
+      merchantSalt: PAYTR_MERCHANT_SALT ? "***" + PAYTR_MERCHANT_SALT.slice(-4) : "missing",
+      hashStrLength: hashStr.length,
+      hashStrPreview: hashStr.substring(0, 50) + "...",
+      paytrTokenLength: paytrToken.length,
+      paytrTokenPreview: paytrToken.substring(0, 20) + "...",
+    });
+  }
   
   // Prepare form data
   const formData = new URLSearchParams();
@@ -114,6 +138,26 @@ export async function createPaytrIframeToken(
   formData.append("merchant_key", PAYTR_MERCHANT_KEY);
   formData.append("merchant_salt", PAYTR_MERCHANT_SALT);
   formData.append("paytr_token", paytrToken);
+  
+  // Add notification URL if provided
+  if (notificationUrl) {
+    formData.append("merchant_notify_url", notificationUrl);
+  }
+  
+  // Debug: Log form data (without sensitive fields) for troubleshooting
+  const formDataDebug = {
+    merchant_id: PAYTR_MERCHANT_ID,
+    merchant_oid: merchantOid,
+    email: email,
+    payment_amount: paymentAmountKurus,
+    currency: currency,
+    test_mode: testMode,
+    merchant_ok_url: merchantOkUrl,
+    merchant_fail_url: merchantFailUrl,
+    merchant_notify_url: notificationUrl,
+    paytr_token_length: paytrToken.length,
+  };
+  console.log("PayTR request debug:", formDataDebug);
   
   // Make request to PayTR
   const paytrUrl = "https://www.paytr.com/odeme/api/get-token";

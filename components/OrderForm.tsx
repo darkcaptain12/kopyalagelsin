@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Script from "next/script";
 import type { OrderFormData, PriceBreakdown } from "@/lib/types";
 import type { AppConfig } from "@/lib/config";
 import { calculateTotals } from "@/lib/pricing";
@@ -44,9 +45,22 @@ export default function OrderForm() {
   const [priceBreakdown, setPriceBreakdown] = useState<PriceBreakdown | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string>("");
+  const [paymentToken, setPaymentToken] = useState<string | null>(null);
+  const [orderId, setOrderId] = useState<string | null>(null);
 
   // Fetch config and user on mount
   useEffect(() => {
+    // Check for URL error parameters
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const urlError = params.get("error");
+      if (urlError === "payment_failed") {
+        setError("Ödeme işlemi başarısız oldu. Lütfen tekrar deneyin.");
+        // Clean URL
+        window.history.replaceState({}, "", window.location.pathname);
+      }
+    }
+
     fetch("/api/config")
       .then((res) => res.json())
       .then((data) => setConfig(data))
@@ -228,33 +242,47 @@ export default function OrderForm() {
     e.preventDefault();
     setError("");
 
+    console.log("Form submit başladı", { formData, priceBreakdown, pdfFile });
+
     if (!formData.size || !formData.color || !formData.side || !formData.bindingType) {
-      setError("Lütfen tüm baskı seçeneklerini doldurun.");
+      const errorMsg = "Lütfen tüm baskı seçeneklerini doldurun.";
+      setError(errorMsg);
+      console.error("Validation error:", errorMsg);
       return;
     }
 
     if (!formData.pageCount || formData.pageCount <= 0) {
-      setError("Lütfen geçerli bir sayfa sayısı girin.");
+      const errorMsg = "Lütfen geçerli bir sayfa sayısı girin.";
+      setError(errorMsg);
+      console.error("Validation error:", errorMsg);
       return;
     }
 
     if (formData.bindingType !== "none" && (!formData.ciltCount || formData.ciltCount <= 0)) {
-      setError("Ciltleme seçildiğinde cilt sayısı gerekli.");
+      const errorMsg = "Ciltleme seçildiğinde cilt sayısı gerekli.";
+      setError(errorMsg);
+      console.error("Validation error:", errorMsg);
       return;
     }
 
     if (!pdfFile) {
-      setError("Lütfen bir PDF dosyası yükleyin.");
+      const errorMsg = "Lütfen bir PDF dosyası yükleyin.";
+      setError(errorMsg);
+      console.error("Validation error:", errorMsg);
       return;
     }
 
     if (!formData.customerName || !formData.email || !formData.phone || !formData.address) {
-      setError("Lütfen tüm müşteri bilgilerini doldurun.");
+      const errorMsg = "Lütfen tüm müşteri bilgilerini doldurun.";
+      setError(errorMsg);
+      console.error("Validation error:", errorMsg);
       return;
     }
 
     if (!priceBreakdown) {
-      setError("Fiyat hesaplanamadı. Lütfen formu kontrol edin.");
+      const errorMsg = "Fiyat hesaplanamadı. Lütfen formu kontrol edin.";
+      setError(errorMsg);
+      console.error("Validation error:", errorMsg, { config, formData });
       return;
     }
 
@@ -301,30 +329,71 @@ export default function OrderForm() {
       const paymentData = await paymentResponse.json();
 
       if (paymentData.token) {
-        window.location.href = paymentData.redirectUrl;
+        // Set payment token to show iframe
+        setPaymentToken(paymentData.token);
+        setOrderId(paymentData.orderId || null);
+        setIsSubmitting(false);
+        // Scroll to payment iframe
+        setTimeout(() => {
+          const paymentElement = document.getElementById("paytr-iframe-container");
+          if (paymentElement) {
+            paymentElement.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+        }, 100);
       } else {
         throw new Error("Ödeme token'ı alınamadı.");
       }
     } catch (err: any) {
-      setError(err.message || "Bir hata oluştu. Lütfen tekrar deneyin.");
+      console.error("Ödeme başlatma hatası:", err);
+      const errorMessage = err.message || "Bir hata oluştu. Lütfen tekrar deneyin.";
+      setError(errorMessage);
       setIsSubmitting(false);
+      // Hata mesajını daha görünür hale getir
+      setTimeout(() => {
+        const errorElement = document.querySelector('[data-error="true"]');
+        if (errorElement) {
+          errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
     }
   };
 
   return (
-    <section id="siparis" className="py-16 bg-gray-50">
-      <div className="container mx-auto px-4">
-        <h2 className="text-3xl md:text-4xl font-bold text-center mb-12 text-gray-900">
-          Sipariş Formu
-        </h2>
+    <>
+      {/* PayTR iFrame Resizer Script */}
+      {paymentToken && (
+        <Script
+          src="https://www.paytr.com/js/iframeResizer.min.js"
+          strategy="afterInteractive"
+          onLoad={() => {
+            // Initialize iframe resizer after script loads
+            if (typeof window !== "undefined" && (window as any).iFrameResize) {
+              (window as any).iFrameResize({}, "#paytriframe");
+            }
+          }}
+        />
+      )}
+      
+      <section id="siparis" className="py-16 bg-gray-50">
+        <div className="container mx-auto px-4">
+          <h2 className="text-3xl md:text-4xl font-bold text-center mb-12 text-gray-900">
+            Sipariş Formu
+          </h2>
 
         <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Form */}
           <div className="lg:col-span-2">
-            <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-lg p-6 space-y-6">
+            <form 
+              onSubmit={(e) => {
+                console.log("Form onSubmit tetiklendi");
+                handleSubmit(e);
+              }} 
+              className="bg-white rounded-lg shadow-lg p-6 space-y-6"
+              noValidate
+            >
               {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-                  {error}
+                <div data-error="true" className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+                  <strong>Hata:</strong> {error}
                 </div>
               )}
 
@@ -843,10 +912,46 @@ export default function OrderForm() {
                 type="submit"
                 disabled={isSubmitting || !priceBreakdown}
                 className="w-full bg-blue-600 text-white py-3 px-4 rounded-md font-semibold hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                onClick={() => {
+                  console.log("Ödeme butonu tıklandı", { 
+                    isSubmitting, 
+                    priceBreakdown: !!priceBreakdown, 
+                    formData,
+                    config: !!config 
+                  });
+                }}
               >
-                {isSubmitting ? "İşleniyor..." : "Ödemeye Geç"}
+                {isSubmitting 
+                  ? "İşleniyor..." 
+                  : !priceBreakdown 
+                    ? "Fiyat Hesaplanıyor..." 
+                    : "Ödemeye Geç"}
               </button>
+              {!priceBreakdown && (
+                <p className="text-sm text-gray-500 mt-2 text-center">
+                  Fiyat hesaplamak için tüm form alanlarını doldurun.
+                </p>
+              )}
             </form>
+            
+            {/* PayTR Payment iFrame */}
+            {paymentToken && (
+              <div id="paytr-iframe-container" className="mt-6 bg-white rounded-lg shadow-lg p-6">
+                <h3 className="text-xl font-semibold mb-4">Ödeme İşlemi</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Lütfen aşağıdaki ödeme formunu doldurun. Güvenli ödeme için PayTR altyapısı kullanılmaktadır.
+                </p>
+                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                  <iframe
+                    src={`https://www.paytr.com/odeme/guvenli/${paymentToken}`}
+                    id="paytriframe"
+                    frameBorder="0"
+                    scrolling="no"
+                    style={{ width: "100%", minHeight: "600px" }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Price Summary */}
@@ -898,6 +1003,7 @@ export default function OrderForm() {
         </div>
       </div>
     </section>
+    </>
   );
 }
 

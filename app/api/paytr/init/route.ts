@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import crypto from "crypto";
 import { getConfig } from "@/lib/config";
 import { calculateTotals, type Size, type Color, type Side, type BindingType } from "@/lib/pricing";
 import { createOrder } from "@/lib/ordersStore";
@@ -7,11 +6,9 @@ import { getSessionFromRequest } from "@/lib/auth";
 import { getUserById } from "@/lib/usersStore";
 import { getCouponByCode } from "@/lib/couponsStore";
 import { calculateDiscount, type DiscountResult } from "@/lib/discounts";
+import { createPaytrIframeToken, getClientIp } from "@/lib/paytr";
 
-const PAYTR_MERCHANT_ID = process.env.PAYTR_MERCHANT_ID || "";
-const PAYTR_MERCHANT_KEY = process.env.PAYTR_MERCHANT_KEY || "";
-const PAYTR_MERCHANT_SALT = process.env.PAYTR_MERCHANT_SALT || "";
-const PAYTR_TEST_MODE = process.env.PAYTR_TEST_MODE === "1";
+export const dynamic = "force-dynamic";
 
 interface RequestBody {
   size: Size;
@@ -39,13 +36,6 @@ interface RequestBody {
 
 export async function POST(request: NextRequest) {
   try {
-    if (!PAYTR_MERCHANT_ID || !PAYTR_MERCHANT_KEY || !PAYTR_MERCHANT_SALT) {
-      return NextResponse.json(
-        { error: "PayTR yapılandırması eksik." },
-        { status: 500 }
-      );
-    }
-
     const body: RequestBody = await request.json();
     const config = await getConfig();
     const session = getSessionFromRequest(request);
@@ -132,74 +122,71 @@ export async function POST(request: NextRequest) {
     });
 
     // Prepare PayTR payment data
-    const merchantOid = order.id;
-    const paymentAmount = finalTotal.toFixed(2);
-    const currency = "TL";
-    const testMode = PAYTR_TEST_MODE ? "1" : "0";
-
-    // Get base URL from request or environment variable
-    const baseUrl = 
-      request.headers.get("origin") || 
-      process.env.NEXT_PUBLIC_APP_URL || 
-      "http://localhost:3000";
-    const callbackUrl = `${baseUrl}/api/paytr/callback`;
-    const returnUrl = `${baseUrl}/success?orderId=${order.id}`;
-
-    // Build hash string
-    const hashStr = `${PAYTR_MERCHANT_ID}${merchantOid}${body.email}${paymentAmount}${PAYTR_MERCHANT_SALT}`;
-    const hash = crypto.createHash("sha256").update(hashStr).digest("base64");
-
-    // Prepare form data for PayTR
-    const paytrData = {
-      merchant_id: PAYTR_MERCHANT_ID,
-      merchant_key: PAYTR_MERCHANT_KEY,
-      merchant_salt: PAYTR_MERCHANT_SALT,
-      merchant_oid: merchantOid,
-      email: body.email,
-      payment_amount: paymentAmount,
-      paytr_token: hash,
-      currency: currency,
-      test_mode: testMode,
-      no_installment: "0",
-      max_installment: "0",
-      user_basket: Buffer.from(
-        JSON.stringify([[`Dijital Çıktı Siparişi`, paymentAmount, "1"]])
-      ).toString("base64"),
-      user_name: body.customerName,
-      user_address: body.address,
-      user_phone: body.phone,
-      user_ip: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "127.0.0.1",
-      callback_url: callbackUrl,
-      return_url: returnUrl,
-      lang: "tr",
-    };
-
-    // Send request to PayTR
-    const paytrUrl = "https://www.paytr.com/odeme/api/get-token";
-    const formData = new URLSearchParams();
-    Object.entries(paytrData).forEach(([key, value]) => {
-      formData.append(key, String(value));
-    });
-
-    const paytrResponse = await fetch(paytrUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
+    // PayTR requires merchant_oid to be alphanumeric only (no special characters)
+    // UUID format contains dashes, so we remove all non-alphanumeric characters
+    let merchantOid = order.id.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+    
+    // PayTR merchant_oid must be between 1-64 characters
+    if (merchantOid.length > 64) {
+      merchantOid = merchantOid.substring(0, 64);
+    }
+    
+    // Validate merchant_oid is not empty
+    if (!merchantOid || merchantOid.length === 0) {
+      console.error("Invalid merchant_oid after cleaning:", order.id);
+      return NextResponse.json(
+        { error: "Sipariş ID'si oluşturulamadı. Lütfen tekrar deneyin." },
+        { status: 500 }
+      );
+    }
+    
+    // Get client IP
+    const clientIp = getClientIp(request);
+    
+    // Get base URL from request (for local development)
+    const requestOrigin = request.headers.get("origin");
+    const requestHost = request.headers.get("host");
+    const protocol = request.headers.get("x-forwarded-proto") || (requestOrigin?.startsWith("https") ? "https" : "http");
+    const baseUrl = requestOrigin || (requestHost ? `${protocol}://${requestHost}` : null);
+    
+    // Prepare basket for PayTR
+    // PayTR expects: [[productName, unitPriceAsString, quantity], ...]
+    // Prices should be in TL (not kuruş) for basket items
+    const basket = [
+      {
+        name: "Dijital Çıktı Siparişi",
+        price: finalTotal, // Total amount in TL
+        quantity: 1,
       },
-      body: formData.toString(),
-    });
-
-    const paytrResult = await paytrResponse.json();
-
-    if (paytrResult.status === "success") {
+    ];
+    
+    // Create PayTR iframe token
+    try {
+      const paytrResult = await createPaytrIframeToken({
+        merchantOid,
+        userIp: clientIp,
+        email: body.email,
+        userName: body.customerName.trim(),
+        userAddress: body.address.trim(),
+        userPhone: body.phone.trim(),
+        basket,
+        paymentAmount: finalTotal, // Total in TL
+        currency: "TL",
+        noInstallment: 0,
+        maxInstallment: 0,
+        lang: "tr",
+        baseUrl: baseUrl || undefined, // Pass base URL from request
+      });
+      
       return NextResponse.json({
         token: paytrResult.token,
-        redirectUrl: `https://www.paytr.com/odeme/guvenli/${paytrResult.token}`,
+        merchantOid: merchantOid,
         orderId: order.id,
       });
-    } else {
+    } catch (paytrError: any) {
+      console.error("PayTR token creation error:", paytrError);
       return NextResponse.json(
-        { error: paytrResult.reason || "Ödeme başlatılamadı." },
+        { error: paytrError.message || "Ödeme başlatılamadı. Lütfen tekrar deneyin." },
         { status: 400 }
       );
     }

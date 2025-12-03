@@ -37,14 +37,15 @@ export default function Navbar() {
     <nav className="bg-white shadow-md sticky top-0 z-50">
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center h-16">
-          <Link href="/" className="flex items-center">
+          <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
             {!logoError && (
-              <div className="relative w-12 h-12">
+              <div className="relative h-12 w-auto min-w-[160px]">
                 <Image
-                  src="/logo/favicon.png"
+                  src="/logo/kopyalagelsin.png"
                   alt="kopyalagelsin Logo"
-                  fill
-                  className="object-contain"
+                  width={200}
+                  height={48}
+                  className="object-contain h-full w-auto"
                   priority
                   onError={() => setLogoError(true)}
                 />

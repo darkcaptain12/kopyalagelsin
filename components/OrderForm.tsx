@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Script from "next/script";
+import Image from "next/image";
 import type { OrderFormData, PriceBreakdown } from "@/lib/types";
 import type { AppConfig } from "@/lib/config";
 import { calculateTotals } from "@/lib/pricing";
@@ -1004,6 +1005,41 @@ export default function OrderForm() {
                     <span>Genel Toplam:</span>
                     <span className="text-blue-600">{priceBreakdown.grandTotal.toFixed(2)} ₺</span>
                   </div>
+
+                  {/* Cilt Tipi Görseli */}
+                  {formData.bindingType === "spiral" && (
+                    <div className="mt-6 pt-6 border-t border-gray-300">
+                      <h4 className="text-sm font-semibold text-gray-700 mb-3 text-center">
+                        Spiral Cilt Görünümü
+                      </h4>
+                      <div className="relative w-full h-48 rounded-lg overflow-hidden">
+                        <Image
+                          src="/urun_tipleri/tel.png"
+                          alt="Spiral Cilt"
+                          fill
+                          className="object-contain"
+                          priority={false}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {formData.bindingType === "american" && (
+                    <div className="mt-6 pt-6 border-t border-gray-300">
+                      <h4 className="text-sm font-semibold text-gray-700 mb-3 text-center">
+                        Amerikan Cilt Görünümü
+                      </h4>
+                      <div className="relative w-full h-48 rounded-lg overflow-hidden">
+                        <Image
+                          src="/urun_tipleri/amerikan.png"
+                          alt="Amerikan Cilt"
+                          fill
+                          className="object-contain"
+                          priority={false}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <p className="text-gray-500 text-sm">

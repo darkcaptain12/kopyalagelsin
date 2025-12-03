@@ -7,10 +7,12 @@ Vercel dashboard'unda aşağıdaki environment değişkenlerini ayarlayın:
 ### PayTR Configuration
 ```
 PAYTR_MERCHANT_ID=645606
-PAYTR_MERCHANT_KEY=hR1zceG9rrrqfhR3
+PAYTR_MERCHANT_KEY=5R5XRs2ddX87AoKq
 PAYTR_MERCHANT_SALT=P5u4aF4thJLXB9YJ
 PAYTR_TEST_MODE=0
 ```
+
+**ÖNEMLİ**: Production için `PAYTR_TEST_MODE=0` olmalıdır. Test için `PAYTR_TEST_MODE=1` kullanın.
 
 ### Admin Configuration
 ```
@@ -56,15 +58,35 @@ Eğer bu token yoksa, Vercel Dashboard'dan Blob Storage'ı oluşturmanız gereki
 3. Token otomatik olarak eklenir
 
 ### PayTR Callback URL
-PayTR panelinde callback URL'i şu şekilde ayarlayın:
+PayTR panelinde bildirim (callback) URL'i şu şekilde ayarlayın:
 ```
-https://kopyalagelsin.com/api/paytr/callback
+https://www.kopyalagelsin.com/api/paytr/notify
 ```
 
-### Test
-1. İlk deployment sonrası admin paneline giriş yapın: `/admin`
-2. PayTR test ödemesi yapın (test modu kapalı olduğu için gerçek ödeme yapılır)
-3. Sipariş akışını test edin
+**Not**: Bu URL PayTR panelinde "Bildirim URL" olarak ayarlanmalıdır.
+
+### Production Modu
+
+**Test Modundan Production Moduna Geçiş:**
+
+1. **Vercel Dashboard'da Environment Variable'ı güncelleyin:**
+   - Settings > Environment Variables
+   - `PAYTR_TEST_MODE` değişkenini bulun
+   - Değerini `0` olarak ayarlayın (veya silin ve yeniden ekleyin)
+   - Production environment'ını seçin
+   - Değişikliği kaydedin
+
+2. **Yeni deployment tetikleyin:**
+   - Vercel otomatik olarak yeniden deploy edecektir
+   - Veya manuel olarak "Redeploy" yapabilirsiniz
+
+3. **Doğrulama:**
+   - Admin paneline giriş yapın: `/admin`
+   - Yeni bir test siparişi oluşturun
+   - PayTR ödeme sayfası açıldığında gerçek ödeme yapılacaktır (test modu kapalı)
+   - Sipariş akışını test edin
+
+**⚠️ UYARI**: Production modunda (`PAYTR_TEST_MODE=0`) yapılan ödemeler gerçektir ve geri alınamaz!
 
 ## Build Kontrolü
 

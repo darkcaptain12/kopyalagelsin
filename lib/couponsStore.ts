@@ -1,6 +1,7 @@
 import { readFile, writeFile, mkdir } from "fs/promises";
 import { existsSync } from "fs";
 import path from "path";
+import { readBlobJson, writeBlobJson } from "./blobStorage";
 
 export type CouponType = "WELCOME" | "REFERRAL";
 
@@ -17,16 +18,60 @@ export interface Coupon {
   createdAt: string; // ISO
 }
 
+// Storage configuration (same as ordersStore, config, and usersStore)
+const isVercel = 
+  process.env.VERCEL === "1" || 
+  !!process.env.VERCEL_ENV ||
+  process.env.VERCEL_URL !== undefined ||
+  (typeof process.cwd === "function" && process.cwd().includes("/var/task"));
+
+const USE_BLOB_STORAGE = isVercel || process.env.USE_BLOB_STORAGE === "1";
+
 const DATA_DIR = path.join(process.cwd(), "data");
 const COUPONS_FILE = path.join(DATA_DIR, "coupons.json");
+const BLOB_FILENAME = "coupons.json";
 
 async function ensureDataDir(): Promise<void> {
+  if (USE_BLOB_STORAGE) return; // Skip on Vercel
+  
   if (!existsSync(DATA_DIR)) {
     await mkdir(DATA_DIR, { recursive: true });
   }
 }
 
-async function readCouponsFile(): Promise<Coupon[]> {
+// Blob Storage helpers (for Vercel production)
+async function readCouponsBlob(): Promise<Coupon[]> {
+  try {
+    const coupons = await readBlobJson<Coupon[]>(BLOB_FILENAME, {
+      prefix: "app-data",
+    });
+    return coupons || [];
+  } catch (error: any) {
+    console.error("Error reading coupons from blob storage:", error);
+    if (error.statusCode === 404 || error.message?.includes("not found")) {
+      return [];
+    }
+    return [];
+  }
+}
+
+async function writeCouponsBlob(coupons: Coupon[]): Promise<void> {
+  try {
+    await writeBlobJson(BLOB_FILENAME, coupons, {
+      prefix: "app-data",
+    });
+  } catch (error: any) {
+    console.error("Error writing coupons to blob storage:", error);
+    throw new Error(`Kupon kaydedilemedi: ${error.message || "Bilinmeyen hata"}`);
+  }
+}
+
+// Local file system helpers (for local dev only)
+async function readCouponsFileLocal(): Promise<Coupon[]> {
+  if (USE_BLOB_STORAGE) {
+    throw new Error("Local file system should not be used when USE_BLOB_STORAGE is enabled");
+  }
+  
   await ensureDataDir();
 
   if (!existsSync(COUPONS_FILE)) {
@@ -42,9 +87,30 @@ async function readCouponsFile(): Promise<Coupon[]> {
   }
 }
 
-async function writeCouponsFile(coupons: Coupon[]): Promise<void> {
+async function writeCouponsFileLocal(coupons: Coupon[]): Promise<void> {
+  if (USE_BLOB_STORAGE) {
+    throw new Error("Local file system should not be used when USE_BLOB_STORAGE is enabled");
+  }
+  
   await ensureDataDir();
   await writeFile(COUPONS_FILE, JSON.stringify(coupons, null, 2), "utf-8");
+}
+
+// Unified read/write functions
+async function readCouponsFile(): Promise<Coupon[]> {
+  if (USE_BLOB_STORAGE) {
+    return await readCouponsBlob();
+  } else {
+    return await readCouponsFileLocal();
+  }
+}
+
+async function writeCouponsFile(coupons: Coupon[]): Promise<void> {
+  if (USE_BLOB_STORAGE) {
+    await writeCouponsBlob(coupons);
+  } else {
+    await writeCouponsFileLocal(coupons);
+  }
 }
 
 function generateCouponCode(discountPercent: number): string {

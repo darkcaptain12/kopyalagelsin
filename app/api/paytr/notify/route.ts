@@ -36,20 +36,29 @@ export async function POST(request: NextRequest) {
     const currency = formData.get("currency") as string;
     const paymentAmount = formData.get("payment_amount") as string;
 
-    // Log incoming notification for debugging
-    console.log("PayTR notification received:", {
+    // Log incoming notification for debugging - log ALL fields
+    console.log("PayTR notification received (full):", {
       merchantOid,
       status,
       totalAmount,
+      hash: hash ? hash.substring(0, 30) + "..." : "missing",
+      failedReasonCode,
+      failedReasonMsg,
       testMode,
       paymentType,
       currency,
       paymentAmount,
+      allFields: Object.fromEntries(formData.entries()), // Log all form data
     });
 
     // Validate required fields
     if (!merchantOid || !status || !totalAmount || !hash) {
-      console.error("PayTR notification missing required fields");
+      console.error("PayTR notification missing required fields:", {
+        hasMerchantOid: !!merchantOid,
+        hasStatus: !!status,
+        hasTotalAmount: !!totalAmount,
+        hasHash: !!hash,
+      });
       return new NextResponse("FAILED: Missing required fields", { status: 400 });
     }
 
@@ -62,14 +71,21 @@ export async function POST(request: NextRequest) {
     });
 
     if (!isValidHash) {
-      console.error("PayTR hash verification failed", {
+      console.error("PayTR hash verification FAILED - DO NOT process order", {
         merchantOid,
         status,
         totalAmount,
+        receivedHash: hash.substring(0, 30) + "...",
       });
-      // DO NOT return "OK" if hash verification fails
+      // DO NOT return "OK" if hash verification fails - return 400 to PayTR
       return new NextResponse("FAILED: Hash verification failed", { status: 400 });
     }
+
+    console.log("PayTR hash verification SUCCESS - processing order:", {
+      merchantOid,
+      status,
+      totalAmount,
+    });
 
     // Find order by merchant_oid
     // PayTR sends merchant_oid as alphanumeric only (no special characters, lowercase)

@@ -1,8 +1,11 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import Navbar from "@/components/Navbar";
+import AnnouncementBar from "@/components/AnnouncementBar";
+import Footer from "@/components/Footer";
 
 function RegisterForm() {
   const router = useRouter();
@@ -66,9 +69,12 @@ function RegisterForm() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-12">
-      <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6 text-center">Üye Ol</h1>
+    <div className="min-h-screen bg-gray-50">
+      <AnnouncementBar />
+      <Navbar />
+      <div className="flex items-center justify-center px-4 py-12 min-h-[calc(100vh-200px)]">
+        <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
+          <h1 className="text-2xl font-bold text-gray-900 mb-6 text-center">Üye Ol</h1>
 
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
@@ -146,7 +152,9 @@ function RegisterForm() {
             Giriş Yap
           </Link>
         </p>
+        </div>
       </div>
+      <Footer />
     </div>
   );
 }
@@ -154,9 +162,12 @@ function RegisterForm() {
 export default function RegisterPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-12">
-        <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
-          <div className="animate-pulse">
+      <div className="min-h-screen bg-gray-50">
+        <AnnouncementBar />
+        <Navbar />
+        <div className="flex items-center justify-center px-4 py-12 min-h-[calc(100vh-200px)]">
+          <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
+            <div className="animate-pulse">
             <div className="h-8 bg-gray-200 rounded mb-6"></div>
             <div className="space-y-4">
               <div className="h-10 bg-gray-200 rounded"></div>
@@ -165,7 +176,9 @@ export default function RegisterPage() {
               <div className="h-10 bg-gray-200 rounded"></div>
             </div>
           </div>
+          </div>
         </div>
+        <Footer />
       </div>
     }>
       <RegisterForm />

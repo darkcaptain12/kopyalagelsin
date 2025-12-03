@@ -57,6 +57,9 @@ export default function Navbar() {
             <Link href="/" className="text-gray-700 hover:text-blue-600 transition">
               Anasayfa
             </Link>
+            <Link href="/pdf-birlestir" className="text-gray-700 hover:text-blue-600 transition">
+              PDF Birleştir
+            </Link>
             <a href="#nasil-calisir" className="text-gray-700 hover:text-blue-600 transition">
               Nasıl Çalışır?
             </a>

@@ -3,56 +3,101 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import type { UIConfig } from "@/lib/config";
+import type { AppConfig } from "@/lib/config";
 
 export default function Hero() {
-  const [uiConfig, setUiConfig] = useState<UIConfig | null>(null);
+  const [config, setConfig] = useState<AppConfig | null>(null);
 
   useEffect(() => {
-    fetch("/api/config")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.ui) {
-          setUiConfig(data.ui);
-        }
+    // Add cache busting to ensure fresh config
+    const loadConfig = () => {
+      fetch(`/api/config?t=${Date.now()}`, {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache",
+        },
       })
-      .catch(() => {
-        // Fallback to default if API fails
-        setUiConfig({
-          banner: {
-            title: "Öğrenciler için uygun fiyatlı dijital çıktı hizmeti",
-            subtitle: "PDF dosyanı yükle, baskı seçeneklerini seç, online öde, çıktın kapına gelsin.",
-            buttonText: "Çıktı Siparişi Ver",
-            buttonLink: "#siparis",
-            backgroundColor: "#2563eb",
-            backgroundColorEnd: "#1e40af",
-            textColor: "#ffffff",
-            imageEnabled: true,
-            imagePath: "/logo/favicon.png",
+        .then((res) => res.json())
+        .then((data: AppConfig) => {
+          setConfig(data);
+        })
+      .catch((err) => {
+        console.error("Failed to load config:", err);
+        // Fallback to minimal default config if API fails
+        setConfig({
+          ui: {
+            banner: {
+              title: "Öğrenciler için uygun fiyatlı dijital çıktı hizmeti",
+              subtitle: "PDF dosyanı yükle, baskı seçeneklerini seç, online öde, çıktın kapına gelsin.",
+              buttonText: "Çıktı Siparişi Ver",
+              buttonLink: "#siparis",
+              backgroundColor: "#2563eb",
+              backgroundColorEnd: "#1e40af",
+              textColor: "#ffffff",
+              imageEnabled: true,
+              imagePath: "/logo/favicon.png",
+            },
+            announcementBar: {
+              enabled: false,
+              text: "",
+              link: null,
+              backgroundColor: "#3b82f6",
+              textColor: "#ffffff",
+            },
+            footer: {
+              description: "",
+              phone: "",
+              email: "",
+              address: "",
+              copyright: "",
+            },
           },
-          announcementBar: {
-            enabled: false,
-            text: "",
-            link: null,
-            backgroundColor: "#3b82f6",
-            textColor: "#ffffff",
+          season: {
+            currentSeasonMode: "normal",
+            seasons: {
+              normal: { mode: "normal", bannerUrl: null, priceMultiplier: 1.0 },
+              vize: { mode: "vize", bannerUrl: null, priceMultiplier: 1.0 },
+              final: { mode: "final", bannerUrl: null, priceMultiplier: 1.0 },
+              tez: { mode: "tez", bannerUrl: null, priceMultiplier: 1.0 },
+            },
           },
-          footer: {
-            description: "",
-            phone: "",
-            email: "",
-            address: "",
-            copyright: "",
-          },
-        });
+        } as AppConfig);
       });
+    };
+    
+    loadConfig();
+    // Reload config every 30 seconds to catch updates
+    const interval = setInterval(loadConfig, 30000);
+    return () => clearInterval(interval);
   }, []);
 
-  if (!uiConfig?.banner) {
+  if (!config?.ui?.banner) {
     return null;
   }
 
-  const banner = uiConfig.banner;
+  // Use season banner if available, otherwise use default banner
+  const currentSeasonMode = config.season?.currentSeasonMode || "normal";
+  const seasons = config.season?.seasons;
+  const seasonBannerUrl = seasons?.[currentSeasonMode]?.bannerUrl;
+  
+  // Use season banner if available, fallback to default banner
+  const bannerImagePath = seasonBannerUrl || config.ui.banner.imagePath || "/logo/favicon.png";
+  const banner = config.ui.banner;
+  
+  // Debug: log banner info
+  if (typeof window !== "undefined") {
+    console.log("Banner Debug:", {
+      currentSeasonMode,
+      seasonBannerUrl,
+      defaultBannerPath: config.ui.banner.imagePath,
+      finalBannerPath: bannerImagePath,
+    });
+  }
+  
+  // Add cache busting to banner image URL - use config timestamp for consistency
+  const bannerImageUrl = bannerImagePath
+    ? `${bannerImagePath}${bannerImagePath.includes("?") ? "&" : "?"}v=${Date.now()}`
+    : null;
 
   // Aspect ratio: 2752 / 1536 ≈ 1.791
   const bannerAspectRatio = 2752 / 1536;
@@ -60,26 +105,31 @@ export default function Hero() {
   return (
     <section className="relative w-full overflow-hidden">
       {/* Banner Background Image */}
-      {banner.imageEnabled && banner.imagePath ? (
+      {banner.imageEnabled && bannerImagePath ? (
         <div className="relative w-full" style={{ aspectRatio: bannerAspectRatio }}>
           <div className="absolute inset-0 z-0">
-            {banner.imagePath.startsWith("http://") || banner.imagePath.startsWith("https://") ? (
+            {bannerImageUrl && (bannerImageUrl.startsWith("http://") || bannerImageUrl.startsWith("https://")) ? (
               <img
-                src={banner.imagePath}
+                key={bannerImageUrl}
+                src={bannerImageUrl}
                 alt="Banner"
                 className="w-full h-full object-contain"
                 style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                onError={(e) => {
+                  console.error("Banner image failed to load:", bannerImageUrl);
+                }}
               />
-            ) : (
+            ) : bannerImagePath ? (
               <Image
-                src={banner.imagePath}
+                key={bannerImagePath}
+                src={bannerImagePath}
                 alt="Banner"
                 fill
                 className="object-contain"
                 priority
                 sizes="100vw"
               />
-            )}
+            ) : null}
             {/* Overlay for better text readability */}
             <div
               className="absolute inset-0"

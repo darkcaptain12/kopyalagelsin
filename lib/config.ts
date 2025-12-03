@@ -55,6 +55,24 @@ export interface MarketingConfig {
   referralValidUntil: string | null;
 }
 
+export type SeasonMode = "normal" | "vize" | "final" | "tez";
+
+export interface SeasonBannerConfig {
+  mode: SeasonMode;
+  bannerUrl: string | null; // Banner image URL or path
+  priceMultiplier: number; // e.g. 1.0 (no change), 0.95 (5% discount), etc.
+}
+
+export interface SeasonConfig {
+  currentSeasonMode: SeasonMode;
+  seasons: {
+    normal: SeasonBannerConfig;
+    vize: SeasonBannerConfig;
+    final: SeasonBannerConfig;
+    tez: SeasonBannerConfig;
+  };
+}
+
 export interface UIConfig {
   // Announcement Bar (Kayar Yazı)
   announcementBar: {
@@ -90,6 +108,7 @@ export interface AppConfig {
   pricing: PricingConfig;
   marketing: MarketingConfig;
   ui: UIConfig;
+  season?: SeasonConfig; // Optional for backward compatibility
 }
 
 const DATA_DIR = path.join(process.cwd(), "data");
@@ -112,6 +131,34 @@ function getDefaultMarketingConfig(): MarketingConfig {
     referralDiscountPercent: 5,
     referralValidFrom: null,
     referralValidUntil: null,
+  };
+}
+
+function getDefaultSeasonConfig(): SeasonConfig {
+  return {
+    currentSeasonMode: "normal",
+    seasons: {
+      normal: {
+        mode: "normal",
+        bannerUrl: null,
+        priceMultiplier: 1.0,
+      },
+      vize: {
+        mode: "vize",
+        bannerUrl: null,
+        priceMultiplier: 1.0,
+      },
+      final: {
+        mode: "final",
+        bannerUrl: null,
+        priceMultiplier: 1.0,
+      },
+      tez: {
+        mode: "tez",
+        bannerUrl: null,
+        priceMultiplier: 1.0,
+      },
+    },
   };
 }
 
@@ -196,6 +243,7 @@ function getDefaultConfig(): AppConfig {
     pricing: getDefaultPricingConfig(),
     marketing: getDefaultMarketingConfig(),
     ui: getDefaultUIConfig(),
+    season: getDefaultSeasonConfig(),
   };
 }
 
@@ -247,9 +295,14 @@ export async function getConfig(): Promise<AppConfig> {
         parsed.ui.footer = getDefaultUIConfig().footer;
       }
     }
+
+    // Ensure season config exists
+    if (!parsed.season) {
+      parsed.season = getDefaultSeasonConfig();
+    }
     
     // Only save if we added missing configs
-    if (!parsed.marketing || !parsed.ui || !parsed.ui.banner) {
+    if (!parsed.marketing || !parsed.ui || !parsed.ui.banner || !parsed.season) {
       await writeFile(CONFIG_FILE, JSON.stringify(parsed, null, 2), "utf-8");
     }
     

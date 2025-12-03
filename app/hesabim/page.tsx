@@ -3,6 +3,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Navbar from "@/components/Navbar";
+import AnnouncementBar from "@/components/AnnouncementBar";
+import Footer from "@/components/Footer";
 import type { Coupon } from "@/lib/couponsStore";
 import type { Order } from "@/lib/ordersStore";
 
@@ -98,6 +101,8 @@ export default function AccountPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <AnnouncementBar />
+      <Navbar />
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         <div className="bg-white rounded-lg shadow-lg p-6">
           <div className="flex justify-between items-center mb-6 border-b pb-4">
@@ -344,6 +349,7 @@ export default function AccountPage() {
           )}
         </div>
       </div>
+      <Footer />
     </div>
   );
 }

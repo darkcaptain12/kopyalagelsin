@@ -1,4 +1,4 @@
-import type { AppConfig, PricingConfig, ShippingTier } from "./config";
+import type { AppConfig, PricingConfig, ShippingTier, SeasonConfig } from "./config";
 
 export type Size = "A4" | "A3";
 export type Color = "siyah_beyaz" | "renkli";
@@ -138,7 +138,11 @@ export interface Totals {
   grandTotal: number; // KDV dahil toplam
 }
 
-export function calculateTotals(config: AppConfig | PricingConfig, params: PricingParams): Totals {
+export function calculateTotals(
+  config: AppConfig | PricingConfig,
+  params: PricingParams,
+  seasonConfig?: SeasonConfig | null
+): Totals {
   const printCost = calculatePrintCost(config, {
     size: params.size,
     color: params.color,
@@ -157,8 +161,19 @@ export function calculateTotals(config: AppConfig | PricingConfig, params: Prici
     totalPageCount: params.pageCount,
   });
 
-  // KDV hariç toplam
-  const subtotal = printCost + bindingCost + shippingCost;
+  // KDV hariç toplam (before season multiplier)
+  const baseSubtotal = printCost + bindingCost + shippingCost;
+  
+  // Apply season price multiplier if available
+  let subtotal = baseSubtotal;
+  if (seasonConfig) {
+    const currentSeasonMode = seasonConfig.currentSeasonMode || "normal";
+    const seasonCfg = seasonConfig.seasons[currentSeasonMode];
+    const multiplier = seasonCfg?.priceMultiplier ?? 1.0;
+    if (multiplier !== 1.0) {
+      subtotal = baseSubtotal * multiplier;
+    }
+  }
   
   // KDV hesaplama
   // Support both AppConfig and PricingConfig for backward compatibility

@@ -85,11 +85,36 @@
     },
     "banner": {
       "imageEnabled": true,
-      "imagePath": "/banners/banner-0bcb5404-c039-4959-9000-aa3628735001.png",
+      "imagePath": "https://zfpvqmxtrohiclpaurnz.supabase.co/storage/v1/object/sign/banner/Gemini_Generated_Image_pjzp8mpjzp8mpjzp.png?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV82YjhjZWFkZi1jZDk2LTRkNjUtYmYzZi0zMGFlZGE3ZDQwZDEiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJiYW5uZXIvR2VtaW5pX0dlbmVyYXRlZF9JbWFnZV9wanpwOG1wanpwOG1wanpwLnBuZyIsImlhdCI6MTc2NDc1NDIyMCwiZXhwIjoxNzk2MjkwMjIwfQ.oBuWkQx85HxiSE2Y8kjQ5zsuixc3DczY03udOHEamW0",
       "title": "",
       "subtitle": "    \n\n\n\n\n\n\n",
       "buttonText": "Çıktı Siparişi Ver",
       "buttonLink": "#siparis"
+    }
+  },
+  "season": {
+    "currentSeasonMode": "normal",
+    "seasons": {
+      "normal": {
+        "mode": "normal",
+        "bannerUrl": null,
+        "priceMultiplier": 1
+      },
+      "vize": {
+        "mode": "vize",
+        "bannerUrl": null,
+        "priceMultiplier": 1
+      },
+      "final": {
+        "mode": "final",
+        "bannerUrl": null,
+        "priceMultiplier": 1
+      },
+      "tez": {
+        "mode": "tez",
+        "bannerUrl": null,
+        "priceMultiplier": 1
+      }
     }
   }
 }

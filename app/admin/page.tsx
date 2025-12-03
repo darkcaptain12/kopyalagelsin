@@ -5,7 +5,7 @@ import type { Order } from "@/lib/ordersStore";
 import type { AppConfig } from "@/lib/config";
 import type { Coupon } from "@/lib/couponsStore";
 
-type Tab = "orders" | "pricing" | "marketing" | "ui";
+type Tab = "orders" | "pricing" | "marketing" | "ui" | "campaign";
 
 export default function AdminPage() {
   const [password, setPassword] = useState("");
@@ -18,6 +18,13 @@ export default function AdminPage() {
   const [error, setError] = useState("");
   const [saveLoading, setSaveLoading] = useState(false);
   const [bannerUploading, setBannerUploading] = useState(false);
+  const [showClearOrdersModal, setShowClearOrdersModal] = useState(false);
+  const [clearConfirmText, setClearConfirmText] = useState("");
+  const [clearLoading, setClearLoading] = useState(false);
+  const [showLogModal, setShowLogModal] = useState(false);
+  const [logMessage, setLogMessage] = useState("");
+  const [logs, setLogs] = useState<any[]>([]);
+  const [logLoading, setLogLoading] = useState(false);
   
   // Filter states
   const [searchName, setSearchName] = useState("");
@@ -154,6 +161,93 @@ export default function AdminPage() {
     }
   };
 
+  const handleClearOrders = async () => {
+    if (clearConfirmText !== "EVET_SIFIRLA") {
+      setError("Lütfen onay metnini doğru girin: EVET_SIFIRLA");
+      return;
+    }
+
+    setClearLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch("/api/admin/orders/clear", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          confirm: clearConfirmText,
+          adminUser: "Admin",
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert(data.message || "Siparişler başarıyla sıfırlandı!");
+        setShowClearOrdersModal(false);
+        setClearConfirmText("");
+        fetchOrders(); // Refresh orders list
+      } else {
+        setError(data.error || "Siparişler sıfırlanamadı.");
+      }
+    } catch (err) {
+      setError("Siparişler sıfırlanamadı.");
+    } finally {
+      setClearLoading(false);
+    }
+  };
+
+  const fetchLogs = async () => {
+    setLogLoading(true);
+    try {
+      const response = await fetch("/api/admin/logs");
+      if (response.ok) {
+        const data = await response.json();
+        setLogs(data.logs || []);
+      }
+    } catch (err) {
+      console.error("Loglar yüklenemedi:", err);
+    } finally {
+      setLogLoading(false);
+    }
+  };
+
+  const handleAddLog = async () => {
+    if (!logMessage.trim()) {
+      setError("Lütfen log mesajı girin.");
+      return;
+    }
+
+    setLogLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch("/api/admin/logs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "add",
+          message: logMessage,
+          adminUser: "Admin",
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setLogMessage("");
+        await fetchLogs(); // Refresh logs
+        alert("Log başarıyla kaydedildi!");
+      } else {
+        setError(data.error || "Log kaydedilemedi.");
+      }
+    } catch (err) {
+      setError("Log kaydedilemedi.");
+    } finally {
+      setLogLoading(false);
+    }
+  };
+
   const handleDownloadPDF = (order: Order) => {
     // Use pdfUrl (Vercel Blob) if available, fallback to old pdfPath for backward compatibility
     if (order.pdfUrl) {
@@ -283,6 +377,16 @@ export default function AdminPage() {
               }`}
             >
               Sayfa Tasarımı
+            </button>
+            <button
+              onClick={() => setActiveTab("campaign")}
+              className={`px-6 py-3 font-medium ${
+                activeTab === "campaign"
+                  ? "border-b-2 border-blue-600 text-blue-600"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              Kampanya Modu
             </button>
           </div>
 
@@ -513,7 +617,177 @@ export default function AdminPage() {
                   </table>
                 </div>
               )}
+
+              {/* Admin Actions Section */}
+              <div className="mt-8 bg-white rounded-lg shadow-md p-6">
+                <h3 className="text-lg font-semibold mb-4">Yönetim İşlemleri</h3>
+                <div className="flex flex-wrap gap-4">
+                  <button
+                    onClick={() => setShowClearOrdersModal(true)}
+                    className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition font-medium"
+                  >
+                    Tüm Siparişleri Sıfırla
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowLogModal(true);
+                      fetchLogs();
+                    }}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition font-medium"
+                  >
+                    Manuel Log Kaydet
+                  </button>
+                </div>
+              </div>
             </>
+          )}
+
+          {/* Clear Orders Modal */}
+          {showClearOrdersModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+                <h3 className="text-xl font-bold text-gray-900 mb-4">Siparişleri Sıfırla</h3>
+                <p className="text-gray-700 mb-4">
+                  <strong className="text-red-600">UYARI:</strong> Bu işlem tüm siparişleri kalıcı olarak silecektir. 
+                  Bu işlem geri alınamaz!
+                </p>
+                <p className="text-gray-600 mb-4">
+                  Toplam <strong>{orders.length}</strong> sipariş silinecek.
+                </p>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Onaylamak için <strong>EVET_SIFIRLA</strong> yazın:
+                  </label>
+                  <input
+                    type="text"
+                    value={clearConfirmText}
+                    onChange={(e) => setClearConfirmText(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                    placeholder="EVET_SIFIRLA"
+                  />
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleClearOrders}
+                    disabled={clearLoading || clearConfirmText !== "EVET_SIFIRLA"}
+                    className="flex-1 bg-red-600 text-white px-4 py-2 rounded-md font-semibold hover:bg-red-700 disabled:bg-gray-400 transition"
+                  >
+                    {clearLoading ? "Sıfırlanıyor..." : "Siparişleri Sıfırla"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowClearOrdersModal(false);
+                      setClearConfirmText("");
+                    }}
+                    disabled={clearLoading}
+                    className="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-md font-semibold hover:bg-gray-300 transition"
+                  >
+                    İptal
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Log Modal */}
+          {showLogModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+                <h3 className="text-xl font-bold text-gray-900 mb-4">Log Yönetimi</h3>
+                
+                {/* Add Log Form */}
+                <div className="mb-6 border-b pb-4">
+                  <h4 className="text-lg font-semibold mb-3">Manuel Log Kaydet</h4>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Log Mesajı <span className="text-red-500">*</span>
+                      </label>
+                      <textarea
+                        value={logMessage}
+                        onChange={(e) => setLogMessage(e.target.value)}
+                        rows={3}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Log mesajınızı buraya yazın..."
+                      />
+                    </div>
+                    <button
+                      onClick={handleAddLog}
+                      disabled={!logMessage.trim() || logLoading}
+                      className="w-full bg-blue-600 text-white px-4 py-2 rounded-md font-semibold hover:bg-blue-700 disabled:bg-gray-400 transition"
+                    >
+                      {logLoading ? "Kaydediliyor..." : "Log Kaydet"}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Logs List */}
+                <div>
+                  <div className="flex justify-between items-center mb-3">
+                    <h4 className="text-lg font-semibold">Log Geçmişi</h4>
+                    <button
+                      onClick={fetchLogs}
+                      className="text-sm text-blue-600 hover:text-blue-800"
+                    >
+                      Yenile
+                    </button>
+                  </div>
+                  {logLoading && logs.length === 0 ? (
+                    <div className="text-center py-4">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
+                    </div>
+                  ) : logs.length === 0 ? (
+                    <p className="text-gray-600 text-center py-4">Henüz log kaydı bulunmamaktadır.</p>
+                  ) : (
+                    <div className="space-y-2 max-h-96 overflow-y-auto">
+                      {logs.map((log) => (
+                        <div
+                          key={log.id}
+                          className="border rounded-lg p-3 bg-gray-50 text-sm"
+                        >
+                          <div className="flex justify-between items-start mb-1">
+                            <span className="font-semibold text-gray-900">
+                              {log.type === "manual" ? "📝 Manuel" : 
+                               log.type === "admin" ? "⚙️ Admin" :
+                               log.type === "system" ? "🔧 Sistem" :
+                               log.type === "order" ? "📦 Sipariş" :
+                               "💳 Ödeme"}
+                            </span>
+                            <span className="text-gray-500 text-xs">
+                              {new Date(log.timestamp).toLocaleString("tr-TR")}
+                            </span>
+                          </div>
+                          <p className="text-gray-700">{log.message}</p>
+                          {log.adminUser && (
+                            <p className="text-xs text-gray-500 mt-1">Admin: {log.adminUser}</p>
+                          )}
+                          {log.details && Object.keys(log.details).length > 0 && (
+                            <details className="mt-2">
+                              <summary className="text-xs text-blue-600 cursor-pointer">Detaylar</summary>
+                              <pre className="text-xs bg-white p-2 rounded mt-1 overflow-x-auto">
+                                {JSON.stringify(log.details, null, 2)}
+                              </pre>
+                            </details>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-4 flex justify-end">
+                  <button
+                    onClick={() => {
+                      setShowLogModal(false);
+                      setLogMessage("");
+                    }}
+                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md font-semibold hover:bg-gray-300 transition"
+                  >
+                    Kapat
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
 
           {/* Pricing Tab */}
@@ -1871,6 +2145,172 @@ export default function AdminPage() {
                     {saveLoading ? "Kaydediliyor..." : "Ayarları Kaydet"}
                   </button>
                 </>
+              )}
+            </div>
+          )}
+
+          {/* Campaign Tab */}
+          {activeTab === "campaign" && (
+            <div>
+              {config ? (
+                <>
+                  <div className="space-y-6">
+                    <div className="bg-white rounded-lg shadow-md p-6">
+                      <h3 className="text-xl font-semibold mb-4">Kampanya Modu</h3>
+                      
+                      <div className="mb-6">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Aktif Kampanya Modu
+                        </label>
+                        <select
+                          value={config.season?.currentSeasonMode || "normal"}
+                          onChange={(e) => {
+                            setConfig({
+                              ...config,
+                              season: {
+                                ...(config.season || {
+                                  currentSeasonMode: "normal",
+                                  seasons: {
+                                    normal: { mode: "normal", bannerUrl: null, priceMultiplier: 1.0 },
+                                    vize: { mode: "vize", bannerUrl: null, priceMultiplier: 1.0 },
+                                    final: { mode: "final", bannerUrl: null, priceMultiplier: 1.0 },
+                                    tez: { mode: "tez", bannerUrl: null, priceMultiplier: 1.0 },
+                                  },
+                                }),
+                                currentSeasonMode: e.target.value as "normal" | "vize" | "final" | "tez",
+                              },
+                            });
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="normal">Normal</option>
+                          <option value="vize">Vize Haftası</option>
+                          <option value="final">Final Haftası</option>
+                          <option value="tez">Tez Dönemi</option>
+                        </select>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Seçilen mod ana sayfa banner&apos;ını ve fiyatlandırmayı etkiler.
+                        </p>
+                      </div>
+
+                      {/* Season Configurations */}
+                      <div className="space-y-6 mt-8">
+                        {(["normal", "vize", "final", "tez"] as const).map((seasonMode) => {
+                          const seasonLabel = {
+                            normal: "Normal",
+                            vize: "Vize Haftası",
+                            final: "Final Haftası",
+                            tez: "Tez Dönemi",
+                          }[seasonMode];
+
+                          const seasonData = config.season?.seasons[seasonMode] || {
+                            mode: seasonMode,
+                            bannerUrl: null,
+                            priceMultiplier: 1.0,
+                          };
+
+                          return (
+                            <div key={seasonMode} className="border border-gray-200 rounded-lg p-4">
+                              <h4 className="text-lg font-semibold mb-4">{seasonLabel}</h4>
+                              
+                              <div className="space-y-4">
+                                {/* Banner URL */}
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Banner Görsel URL
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={seasonData.bannerUrl || ""}
+                                    onChange={(e) => {
+                                      const newSeasons = {
+                                        ...(config.season?.seasons || {
+                                          normal: { mode: "normal" as const, bannerUrl: null, priceMultiplier: 1.0 },
+                                          vize: { mode: "vize" as const, bannerUrl: null, priceMultiplier: 1.0 },
+                                          final: { mode: "final" as const, bannerUrl: null, priceMultiplier: 1.0 },
+                                          tez: { mode: "tez" as const, bannerUrl: null, priceMultiplier: 1.0 },
+                                        }),
+                                        [seasonMode]: {
+                                          ...seasonData,
+                                          bannerUrl: e.target.value || null,
+                                        },
+                                      };
+                                      setConfig({
+                                        ...config,
+                                        season: {
+                                          currentSeasonMode: config.season?.currentSeasonMode || "normal",
+                                          seasons: newSeasons,
+                                        },
+                                      });
+                                    }}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    placeholder="/banners/season-banner.jpg veya https://..."
+                                  />
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    Banner görseli URL&apos;i. Boş bırakılırsa varsayılan banner kullanılır.
+                                  </p>
+                                </div>
+
+                                {/* Price Multiplier */}
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Fiyat Çarpanı
+                                  </label>
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0.01"
+                                    max="2"
+                                    value={seasonData.priceMultiplier}
+                                    onChange={(e) => {
+                                      const multiplier = parseFloat(e.target.value) || 1.0;
+                                      const newSeasons = {
+                                        ...(config.season?.seasons || {
+                                          normal: { mode: "normal" as const, bannerUrl: null, priceMultiplier: 1.0 },
+                                          vize: { mode: "vize" as const, bannerUrl: null, priceMultiplier: 1.0 },
+                                          final: { mode: "final" as const, bannerUrl: null, priceMultiplier: 1.0 },
+                                          tez: { mode: "tez" as const, bannerUrl: null, priceMultiplier: 1.0 },
+                                        }),
+                                        [seasonMode]: {
+                                          ...seasonData,
+                                          priceMultiplier: multiplier,
+                                        },
+                                      };
+                                      setConfig({
+                                        ...config,
+                                        season: {
+                                          currentSeasonMode: config.season?.currentSeasonMode || "normal",
+                                          seasons: newSeasons,
+                                        },
+                                      });
+                                    }}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  />
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    1.0 = Fiyat değişmez, 0.95 = %5 indirim, 0.90 = %10 indirim, vb.
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={handleSaveConfig}
+                    disabled={saveLoading}
+                    className="w-full bg-blue-600 text-white py-3 px-4 rounded-md font-semibold hover:bg-blue-700 disabled:bg-gray-400 transition-colors mt-6"
+                  >
+                    {saveLoading ? "Kaydediliyor..." : "Kampanya Ayarlarını Kaydet"}
+                  </button>
+                </>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                  <p className="mt-2 text-gray-600">Yükleniyor...</p>
+                </div>
               )}
             </div>
           )}

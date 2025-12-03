@@ -1,0 +1,13 @@
+[
+  {
+    "type": "admin",
+    "message": "Tüm siparişler sıfırlandı (35 sipariş silindi)",
+    "adminUser": "Admin",
+    "details": {
+      "orderCount": 35,
+      "clearedAt": "2025-12-03T09:23:25.372Z"
+    },
+    "id": "log-1764753805372-7mtsooglp",
+    "timestamp": "2025-12-03T09:23:25.372Z"
+  }
+]

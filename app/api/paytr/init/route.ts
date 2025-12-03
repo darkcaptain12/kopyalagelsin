@@ -50,17 +50,21 @@ export async function POST(request: NextRequest) {
     }
 
     // Re-calculate price on backend for validation
-    const calculatedBreakdown = calculateTotals(config.pricing, {
-      size: body.size,
-      color: body.color,
-      side: body.side,
-      bindingType: body.bindingType,
-      ciltCount: body.ciltCount || 0,
-      pageCount: body.pageCount,
-    });
+    const calculatedBreakdown = calculateTotals(
+      config.pricing,
+      {
+        size: body.size,
+        color: body.color,
+        side: body.side,
+        bindingType: body.bindingType,
+        ciltCount: body.ciltCount || 0,
+        pageCount: body.pageCount,
+      },
+      config.season || null
+    );
 
-    // Base amount before discount (print + binding + shipping)
-    const baseAmount = calculatedBreakdown.printCost + calculatedBreakdown.bindingCost + calculatedBreakdown.shippingCost;
+    // Base amount after season multiplier (use subtotal from breakdown which already includes season multiplier)
+    const baseAmount = calculatedBreakdown.subtotal;
 
     // Apply discount if coupon provided
     let discountResult: DiscountResult = {

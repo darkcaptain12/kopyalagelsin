@@ -198,3 +198,10 @@ export async function updateOrderStatus(
   await writeOrdersFile(orders);
   return orders[orderIndex];
 }
+
+export async function clearAllOrders(): Promise<number> {
+  const orders = await readOrdersFile();
+  const count = orders.length;
+  await writeOrdersFile([]);
+  return count;
+}

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Script from "next/script";
 import Image from "next/image";
 import type { OrderFormData, PriceBreakdown } from "@/lib/types";
@@ -117,22 +118,26 @@ export default function OrderForm() {
     ) {
       try {
         const pricingConfig = config.pricing || config;
-        const breakdown = calculateTotals(pricingConfig, {
-          size: formData.size as Size,
-          color: formData.color as Color,
-          side: formData.side as Side,
-          bindingType: formData.bindingType as BindingType,
-          ciltCount: formData.ciltCount || 0,
-          pageCount: formData.pageCount,
-        });
+        const breakdown = calculateTotals(
+          pricingConfig,
+          {
+            size: formData.size as Size,
+            color: formData.color as Color,
+            side: formData.side as Side,
+            bindingType: formData.bindingType as BindingType,
+            ciltCount: formData.ciltCount || 0,
+            pageCount: formData.pageCount,
+          },
+          config.season || null
+        );
 
         // Apply discount if coupon selected
         let finalBreakdown = breakdown;
         if (selectedCouponCode && user && config) {
           const selectedCoupon = coupons.find((c) => c.code === selectedCouponCode);
           if (selectedCoupon) {
-            // Base amount before KDV (print + binding + shipping)
-            const baseAmount = breakdown.printCost + breakdown.bindingCost + breakdown.shippingCost;
+            // Base amount after season multiplier (use subtotal from breakdown which already includes season multiplier)
+            const baseAmount = breakdown.subtotal;
             
             // Create full User object from API response for calculateDiscount
             // calculateDiscount only needs user.id, so we create a minimal User object
@@ -175,6 +180,116 @@ export default function OrderForm() {
       setPriceBreakdown(null);
     }
   }, [config, formData.size, formData.color, formData.side, formData.bindingType, formData.ciltCount, formData.pageCount, selectedCouponCode, user, coupons]);
+
+  // Scroll to form if hash is present and load merged PDF from sessionStorage
+  useEffect(() => {
+    const scrollToForm = () => {
+      if (typeof window !== "undefined" && window.location.hash === "#siparis") {
+        setTimeout(() => {
+          const formElement = document.getElementById("siparis");
+          if (formElement) {
+            formElement.scrollIntoView({ behavior: "smooth", block: "start" });
+          }
+        }, 300); // Small delay to ensure DOM is ready
+      }
+    };
+
+    scrollToForm();
+
+    const loadMergedPdf = async () => {
+      try {
+        const mergedPdfData = sessionStorage.getItem("mergedPdfData");
+        const mergedPdfFileName = sessionStorage.getItem("mergedPdfFileName");
+
+        if (mergedPdfData && mergedPdfFileName) {
+          // Convert base64 back to File
+          const binaryString = atob(mergedPdfData);
+          const bytes = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          const blob = new Blob([bytes], { type: "application/pdf" });
+          const file = new File([blob], mergedPdfFileName, { type: "application/pdf" });
+
+          setPdfFile(file);
+          setError("");
+
+          // Auto-detect page count
+          const formData = new FormData();
+          formData.append("pdf", file);
+          setIsDetectingPages(true);
+          fetch("/api/pdf/pages", {
+            method: "POST",
+            body: formData,
+          })
+            .then((res) => res.json())
+            .then((data) => {
+              if (data.pageCount) {
+                setPdfPageCount(data.pageCount);
+              }
+            })
+            .catch(() => {
+              // Silent fail - user can enter page count manually
+            })
+            .finally(() => {
+              setIsDetectingPages(false);
+            });
+
+          // Clear sessionStorage after loading
+          sessionStorage.removeItem("mergedPdfData");
+          sessionStorage.removeItem("mergedPdfFileName");
+
+          // Scroll to form after PDF is loaded
+          setTimeout(() => {
+            const formElement = document.getElementById("siparis");
+            if (formElement) {
+              formElement.scrollIntoView({ behavior: "smooth", block: "start" });
+            }
+          }, 500);
+        }
+      } catch (error) {
+        console.error("Error loading merged PDF from sessionStorage:", error);
+      }
+    };
+
+    loadMergedPdf();
+  }, []);
+
+  // Listen for merged PDF from PDF merge tool (for same-page transfers)
+  useEffect(() => {
+    const handleMergedPdf = (event: Event) => {
+      const customEvent = event as CustomEvent<{ file: File }>;
+      if (customEvent.detail?.file) {
+        setPdfFile(customEvent.detail.file);
+        setError("");
+        // Auto-detect page count for merged PDF
+        const formData = new FormData();
+        formData.append("pdf", customEvent.detail.file);
+        setIsDetectingPages(true);
+        fetch("/api/pdf/pages", {
+          method: "POST",
+          body: formData,
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.pageCount) {
+              setPdfPageCount(data.pageCount);
+            }
+          })
+          .catch(() => {
+            // Silent fail - user can enter page count manually
+          })
+          .finally(() => {
+            setIsDetectingPages(false);
+          });
+      }
+    };
+
+    window.addEventListener("mergedPdfReady", handleMergedPdf as EventListener);
+    return () => {
+      window.removeEventListener("mergedPdfReady", handleMergedPdf as EventListener);
+    };
+  }, []);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -775,9 +890,30 @@ export default function OrderForm() {
 
                 {/* PDF Yükleme */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    PDF Dosyası <span className="text-red-500">*</span>
-                  </label>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      PDF Dosyası <span className="text-red-500">*</span>
+                    </label>
+                    <Link
+                      href="/pdf-birlestir"
+                      className="text-xs text-blue-600 hover:text-blue-800 underline flex items-center gap-1 transition"
+                    >
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 4v16m8-8H4"
+                        />
+                      </svg>
+                      PDF Birleştir
+                    </Link>
+                  </div>
                   <div className="relative">
                     <input
                       type="file"

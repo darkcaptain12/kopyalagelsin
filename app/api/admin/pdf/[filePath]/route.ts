@@ -2,8 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { readFile } from "fs/promises";
 import { existsSync } from "fs";
 import path from "path";
+import os from "os";
 
-const UPLOAD_DIR = path.join(process.cwd(), "uploads");
+/**
+ * @deprecated This route is deprecated. New orders use Vercel Blob Storage (pdfUrl).
+ * This route is kept only for backward compatibility with old orders that use pdfPath.
+ * 
+ * New PDF files are stored in Vercel Blob Storage and accessed directly via their public URL.
+ * Old PDF files might still be in /tmp (Vercel) or uploads/ (local).
+ */
+const isVercel = process.env.VERCEL === "1" || !!process.env.VERCEL_ENV;
+const UPLOAD_DIR = isVercel 
+  ? "/tmp/uploads" 
+  : path.join(process.cwd(), "uploads");
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function GET(
   request: NextRequest,
@@ -19,7 +33,10 @@ export async function GET(
     }
 
     if (!existsSync(fullPath)) {
-      return NextResponse.json({ error: "Dosya bulunamadı." }, { status: 404 });
+      return NextResponse.json({ 
+        error: "Dosya bulunamadı.",
+        note: "Bu dosya Vercel Blob Storage'da saklanıyor olabilir. Lütfen pdfUrl kullanın."
+      }, { status: 404 });
     }
 
     const fileBuffer = await readFile(fullPath);
@@ -35,4 +52,3 @@ export async function GET(
     return NextResponse.json({ error: "Dosya yüklenemedi." }, { status: 500 });
   }
 }
-

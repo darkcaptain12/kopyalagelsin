@@ -302,7 +302,16 @@ export default function OrderForm() {
       }
 
       const uploadData = await uploadResponse.json();
-      const pdfPath = uploadData.filePath;
+      
+      // Extract PDF URL and metadata from upload response
+      const pdfUrl = uploadData.pdfUrl;
+      const pdfName = uploadData.pdfName;
+      const pdfSize = uploadData.pdfSize;
+      const uploadedPageCount = uploadData.pageCount || formData.pageCount;
+
+      if (!pdfUrl) {
+        throw new Error("PDF URL alınamadı. Lütfen tekrar deneyin.");
+      }
 
       const paymentResponse = await fetch("/api/paytr/init", {
         method: "POST",
@@ -315,7 +324,10 @@ export default function OrderForm() {
           color: formData.color as Color,
           side: formData.side as Side,
           bindingType: formData.bindingType as BindingType,
-          pdfPath,
+          pageCount: uploadedPageCount, // Use page count from upload response
+          pdfUrl,
+          pdfName,
+          pdfSize,
           priceBreakdown,
           couponCode: selectedCouponCode || null,
         }),

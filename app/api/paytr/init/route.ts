@@ -8,6 +8,7 @@ import { getCouponByCode } from "@/lib/couponsStore";
 import { calculateDiscount, type DiscountResult } from "@/lib/discounts";
 import { createPaytrIframeToken, getClientIp } from "@/lib/paytr";
 
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 interface RequestBody {
@@ -17,7 +18,9 @@ interface RequestBody {
   bindingType: BindingType;
   ciltCount: number;
   pageCount: number;
-  pdfPath: string;
+  pdfUrl: string; // Vercel Blob Storage URL
+  pdfName?: string; // Original PDF filename
+  pdfSize?: number; // PDF file size in bytes
   customerName: string;
   email: string;
   phone: string;
@@ -108,7 +111,9 @@ export async function POST(request: NextRequest) {
       bindingType: body.bindingType,
       ciltCount: body.ciltCount || 0,
       pageCount: body.pageCount,
-      pdfPath: body.pdfPath,
+      pdfUrl: body.pdfUrl,
+      pdfName: body.pdfName,
+      pdfSize: body.pdfSize,
       printCost: calculatedBreakdown.printCost,
       bindingCost: calculatedBreakdown.bindingCost,
       shippingCost: calculatedBreakdown.shippingCost,

@@ -154,8 +154,16 @@ export default function AdminPage() {
     }
   };
 
-  const handleDownloadPDF = (pdfPath: string) => {
-    window.open(`/api/admin/pdf/${encodeURIComponent(pdfPath)}`, "_blank");
+  const handleDownloadPDF = (order: Order) => {
+    // Use pdfUrl (Vercel Blob) if available, fallback to old pdfPath for backward compatibility
+    if (order.pdfUrl) {
+      window.open(order.pdfUrl, "_blank", "noopener,noreferrer");
+    } else if (order.pdfPath) {
+      // Legacy support: try to serve via old route
+      window.open(`/api/admin/pdf/${encodeURIComponent(order.pdfPath)}`, "_blank");
+    } else {
+      alert("PDF bulunamadı.");
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -492,8 +500,9 @@ export default function AdminPage() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
                             <button
-                              onClick={() => handleDownloadPDF(order.pdfPath)}
+                              onClick={() => handleDownloadPDF(order)}
                               className="text-blue-600 hover:text-blue-900"
+                              disabled={!order.pdfUrl && !order.pdfPath}
                             >
                               İndir
                             </button>

@@ -20,7 +20,10 @@ export interface Order {
   bindingType: "none" | "spiral" | "american";
   ciltCount: number;
   pageCount: number;
-  pdfPath: string;
+  pdfUrl: string; // Vercel Blob Storage URL
+  pdfName?: string; // Original PDF filename
+  pdfSize?: number; // PDF file size in bytes
+  pdfPath?: string; // Deprecated: kept for backward compatibility, use pdfUrl instead
   printCost: number;
   bindingCost: number;
   shippingCost: number;

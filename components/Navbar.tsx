@@ -16,6 +16,7 @@ export default function Navbar() {
   const [logoError, setLogoError] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -60,18 +61,50 @@ export default function Navbar() {
             <Link href="/pdf-birlestir" className="text-gray-700 hover:text-blue-600 transition">
               PDF Birleştir
             </Link>
-            <a href="#nasil-calisir" className="text-gray-700 hover:text-blue-600 transition">
+            <a href="/#nasil-calisir" className="text-gray-700 hover:text-blue-600 transition">
               Nasıl Çalışır?
             </a>
-            <a href="#sss" className="text-gray-700 hover:text-blue-600 transition">
+            <a href="/#sss" className="text-gray-700 hover:text-blue-600 transition">
               Sık Sorulan Sorular
             </a>
-            <a href="#iletisim" className="text-gray-700 hover:text-blue-600 transition">
+            <a href="/#iletisim" className="text-gray-700 hover:text-blue-600 transition">
               İletişim
             </a>
           </div>
 
-          <div className="flex items-center space-x-4">
+          {/* Mobile menu button */}
+          <div className="md:hidden">
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="text-gray-700 hover:text-blue-600 focus:outline-none"
+              aria-label="Toggle menu"
+            >
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                {mobileMenuOpen ? (
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                ) : (
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 6h16M4 12h16M4 18h16"
+                  />
+                )}
+              </svg>
+            </button>
+          </div>
+
+          <div className="hidden md:flex items-center space-x-4">
             {user ? (
               <div className="relative">
                 <button
@@ -130,6 +163,95 @@ export default function Navbar() {
             </Link>
           </div>
         </div>
+
+        {/* Mobile menu */}
+        {mobileMenuOpen && (
+          <div className="md:hidden pb-4">
+            <div className="flex flex-col space-y-3 pt-4 border-t border-gray-200">
+              <Link
+                href="/"
+                className="text-gray-700 hover:text-blue-600 transition py-2"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Anasayfa
+              </Link>
+              <Link
+                href="/pdf-birlestir"
+                className="text-gray-700 hover:text-blue-600 transition py-2"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                PDF Birleştir
+              </Link>
+              <Link
+                href="/#nasil-calisir"
+                className="text-gray-700 hover:text-blue-600 transition py-2"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Nasıl Çalışır?
+              </Link>
+              <Link
+                href="/#sss"
+                className="text-gray-700 hover:text-blue-600 transition py-2"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Sık Sorulan Sorular
+              </Link>
+              <Link
+                href="/#iletisim"
+                className="text-gray-700 hover:text-blue-600 transition py-2"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                İletişim
+              </Link>
+              <div className="pt-3 border-t border-gray-200 space-y-2">
+                {user ? (
+                  <>
+                    <Link
+                      href="/hesabim"
+                      className="block text-gray-700 hover:text-blue-600 transition py-2"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Hesabım
+                    </Link>
+                    <button
+                      onClick={() => {
+                        handleLogout();
+                        setMobileMenuOpen(false);
+                      }}
+                      className="block w-full text-left text-gray-700 hover:text-blue-600 transition py-2"
+                    >
+                      Çıkış Yap
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Link
+                      href="/giris"
+                      className="block text-gray-700 hover:text-blue-600 transition py-2"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Giriş Yap
+                    </Link>
+                    <Link
+                      href="/uye-ol"
+                      className="block bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition text-center"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Üye Ol
+                    </Link>
+                  </>
+                )}
+                <Link
+                  href="/#siparis"
+                  className="block bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition text-center"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Sipariş Ver
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </nav>
   );

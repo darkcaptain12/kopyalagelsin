@@ -7,5 +7,14 @@
     "passwordHash": "$2a$10$rSWoASzpLHCnGf5vY6sHi.yOK8x0lFHlixXBfbpXrMAjmzdRVWvKW",
     "referralCode": "EMIR9999",
     "referredByUserId": null
+  },
+  {
+    "id": "a25ae238-d080-4a18-b9bf-22278f980de1",
+    "createdAt": "2025-12-03T11:37:06.646Z",
+    "name": "emir sümer",
+    "email": "emirsumer2000@gmail.com",
+    "passwordHash": "$2a$10$y8PpUrN2.2yXxQQ8xC4l4erKbOPLfK7cOtmUsV619U9JCq7HVzFPe",
+    "referralCode": "EMIR4147",
+    "referredByUserId": null
   }
 ]

@@ -10,5 +10,17 @@
     "maxUses": 1,
     "usedCount": 0,
     "createdAt": "2025-12-01T13:17:13.435Z"
+  },
+  {
+    "code": "KOPYALAGELSİN56871",
+    "userId": "a25ae238-d080-4a18-b9bf-22278f980de1",
+    "type": "WELCOME",
+    "discountPercent": 5,
+    "validFrom": "2025-12-03T11:37:06.648Z",
+    "validUntil": null,
+    "isActive": true,
+    "maxUses": 1,
+    "usedCount": 0,
+    "createdAt": "2025-12-03T11:37:06.648Z"
   }
 ]

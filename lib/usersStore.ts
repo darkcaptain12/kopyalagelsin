@@ -3,6 +3,7 @@ import { existsSync } from "fs";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
 import bcrypt from "bcryptjs";
+import { readBlobJson, writeBlobJson } from "./blobStorage";
 
 export interface User {
   id: string; // UUID
@@ -14,16 +15,60 @@ export interface User {
   referredByUserId?: string | null;
 }
 
+// Storage configuration (same as ordersStore and config)
+const isVercel = 
+  process.env.VERCEL === "1" || 
+  !!process.env.VERCEL_ENV ||
+  process.env.VERCEL_URL !== undefined ||
+  (typeof process.cwd === "function" && process.cwd().includes("/var/task"));
+
+const USE_BLOB_STORAGE = isVercel || process.env.USE_BLOB_STORAGE === "1";
+
 const DATA_DIR = path.join(process.cwd(), "data");
 const USERS_FILE = path.join(DATA_DIR, "users.json");
+const BLOB_FILENAME = "users.json";
 
 async function ensureDataDir(): Promise<void> {
+  if (USE_BLOB_STORAGE) return; // Skip on Vercel
+  
   if (!existsSync(DATA_DIR)) {
     await mkdir(DATA_DIR, { recursive: true });
   }
 }
 
-async function readUsersFile(): Promise<User[]> {
+// Blob Storage helpers (for Vercel production)
+async function readUsersBlob(): Promise<User[]> {
+  try {
+    const users = await readBlobJson<User[]>(BLOB_FILENAME, {
+      prefix: "app-data",
+    });
+    return users || [];
+  } catch (error: any) {
+    console.error("Error reading users from blob storage:", error);
+    if (error.statusCode === 404 || error.message?.includes("not found")) {
+      return [];
+    }
+    return [];
+  }
+}
+
+async function writeUsersBlob(users: User[]): Promise<void> {
+  try {
+    await writeBlobJson(BLOB_FILENAME, users, {
+      prefix: "app-data",
+    });
+  } catch (error: any) {
+    console.error("Error writing users to blob storage:", error);
+    throw new Error(`Kullanıcı kaydedilemedi: ${error.message || "Bilinmeyen hata"}`);
+  }
+}
+
+// Local file system helpers (for local dev only)
+async function readUsersFileLocal(): Promise<User[]> {
+  if (USE_BLOB_STORAGE) {
+    throw new Error("Local file system should not be used when USE_BLOB_STORAGE is enabled");
+  }
+  
   await ensureDataDir();
 
   if (!existsSync(USERS_FILE)) {
@@ -39,9 +84,30 @@ async function readUsersFile(): Promise<User[]> {
   }
 }
 
-async function writeUsersFile(users: User[]): Promise<void> {
+async function writeUsersFileLocal(users: User[]): Promise<void> {
+  if (USE_BLOB_STORAGE) {
+    throw new Error("Local file system should not be used when USE_BLOB_STORAGE is enabled");
+  }
+  
   await ensureDataDir();
   await writeFile(USERS_FILE, JSON.stringify(users, null, 2), "utf-8");
+}
+
+// Unified read/write functions
+async function readUsersFile(): Promise<User[]> {
+  if (USE_BLOB_STORAGE) {
+    return await readUsersBlob();
+  } else {
+    return await readUsersFileLocal();
+  }
+}
+
+async function writeUsersFile(users: User[]): Promise<void> {
+  if (USE_BLOB_STORAGE) {
+    await writeUsersBlob(users);
+  } else {
+    await writeUsersFileLocal(users);
+  }
 }
 
 function generateReferralCode(name: string): string {

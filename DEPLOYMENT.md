@@ -43,10 +43,17 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ## Önemli Notlar
 
 ### Dosya Depolama
-Vercel serverless fonksiyonlar kullandığı için dosya sistemi kalıcı değildir. Production için:
+Vercel serverless fonksiyonlar kullandığı için dosya sistemi read-only'dir. Production için:
 
-1. **PDF Dosyaları**: Cloud storage kullanın (AWS S3, Cloudinary, Vercel Blob Storage)
-2. **Siparişler**: Veritabanı kullanın (PostgreSQL, MongoDB, Supabase)
+**Vercel Blob Storage Kullanılıyor:**
+1. **PDF Dosyaları**: Vercel Blob Storage'da saklanıyor (`pdfs/` prefix)
+2. **Siparişler JSON**: Vercel Blob Storage'da saklanıyor (`app-data/orders.json`)
+
+**Önemli**: Vercel Blob Storage token'ı otomatik olarak Vercel tarafından sağlanır (`BLOB_READ_WRITE_TOKEN`).
+Eğer bu token yoksa, Vercel Dashboard'dan Blob Storage'ı oluşturmanız gerekir:
+1. Vercel Dashboard → Projeniz → Storage sekmesi
+2. "Create Database" → "Blob" seçin
+3. Token otomatik olarak eklenir
 
 ### PayTR Callback URL
 PayTR panelinde callback URL'i şu şekilde ayarlayın:

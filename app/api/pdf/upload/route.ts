@@ -4,11 +4,28 @@ import { existsSync } from "fs";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
 
-const UPLOAD_DIR = path.join(process.cwd(), "uploads");
+// Vercel'de /tmp dizini kullanılabilir, local'de uploads dizini kullan
+// Vercel serverless ortamında dosya sistemi kalıcı değildir
+const isVercel = process.env.VERCEL === "1" || !!process.env.VERCEL_ENV;
+// Vercel'de sadece /tmp dizini yazılabilir (geçici dosyalar için)
+const UPLOAD_DIR = isVercel 
+  ? "/tmp/uploads" 
+  : path.join(process.cwd(), "uploads");
+
+export const dynamic = "force-dynamic";
+export const maxDuration = 30; // Vercel için max duration
 
 async function ensureUploadDir(): Promise<void> {
   if (!existsSync(UPLOAD_DIR)) {
-    await mkdir(UPLOAD_DIR, { recursive: true });
+    try {
+      await mkdir(UPLOAD_DIR, { recursive: true });
+    } catch (error: any) {
+      console.error("Error creating upload directory:", error);
+      // Vercel'de /tmp dizini otomatik oluşturulur, hata olmamalı
+      if (!isVercel) {
+        throw error;
+      }
+    }
   }
 }
 
@@ -36,15 +53,60 @@ export async function POST(request: NextRequest) {
 
     const fileId = uuidv4();
     const fileName = `${fileId}.pdf`;
-    const filePath = path.join(UPLOAD_DIR, fileName);
+    // For Vercel /tmp, use direct path; for local use path.join
+    const filePath = isVercel 
+      ? `${UPLOAD_DIR}/${fileName}` 
+      : path.join(UPLOAD_DIR, fileName);
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    await writeFile(filePath, buffer);
+    
+    try {
+      await writeFile(filePath, buffer);
+      console.log(`PDF uploaded successfully: ${filePath} (Vercel: ${isVercel})`);
+    } catch (writeError: any) {
+      console.error("Error writing file:", {
+        error: writeError,
+        message: writeError.message,
+        code: writeError.code,
+        filePath,
+        isVercel,
+        uploadDir: UPLOAD_DIR,
+      });
+      
+      // Vercel'de /tmp dizinine yazma hatası
+      if (isVercel) {
+        return NextResponse.json(
+          { 
+            error: "Dosya yazma hatası. Vercel'de dosya depolama için cloud storage kullanmanız önerilir.",
+            details: writeError.message
+          },
+          { status: 500 }
+        );
+      }
+      throw writeError;
+    }
 
-    return NextResponse.json({ filePath: fileName, fileId });
+    return NextResponse.json({ 
+      filePath: fileName, 
+      fileId,
+    });
   } catch (error: any) {
     console.error("Error uploading PDF:", error);
-    return NextResponse.json({ error: "Dosya yüklenemedi." }, { status: 500 });
+    console.error("Error details:", {
+      message: error.message,
+      code: error.code,
+      stack: error.stack,
+      isVercel,
+      uploadDir: UPLOAD_DIR,
+      vercel: process.env.VERCEL,
+      vercelEnv: process.env.VERCEL_ENV,
+    });
+    return NextResponse.json(
+      { 
+        error: "Dosya yüklenemedi.",
+        details: error.message || (isVercel ? "Vercel'de dosya depolama için cloud storage kullanmanız önerilir." : "Bilinmeyen hata")
+      },
+      { status: 500 }
+    );
   }
 }
-

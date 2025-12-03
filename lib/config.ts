@@ -1,6 +1,7 @@
 import { readFile, writeFile, mkdir } from "fs/promises";
 import { existsSync } from "fs";
 import path from "path";
+import { readBlobJson, writeBlobJson } from "./blobStorage";
 
 export interface ShippingTier {
   maxPages: number | null; // null = no upper limit
@@ -111,10 +112,22 @@ export interface AppConfig {
   season?: SeasonConfig; // Optional for backward compatibility
 }
 
+// Storage configuration (same as ordersStore)
+const isVercel = 
+  process.env.VERCEL === "1" || 
+  !!process.env.VERCEL_ENV ||
+  process.env.VERCEL_URL !== undefined ||
+  (typeof process.cwd === "function" && process.cwd().includes("/var/task"));
+
+const USE_BLOB_STORAGE = isVercel || process.env.USE_BLOB_STORAGE === "1";
+
 const DATA_DIR = path.join(process.cwd(), "data");
 const CONFIG_FILE = path.join(DATA_DIR, "config.json");
+const BLOB_FILENAME = "config.json";
 
 async function ensureDataDir(): Promise<void> {
+  if (USE_BLOB_STORAGE) return; // Skip on Vercel
+  
   if (!existsSync(DATA_DIR)) {
     await mkdir(DATA_DIR, { recursive: true });
   }
@@ -247,29 +260,103 @@ function getDefaultConfig(): AppConfig {
   };
 }
 
-export async function getConfig(): Promise<AppConfig> {
-  await ensureDataDir();
+// Blob Storage helpers (for Vercel production)
+async function readConfigBlob(): Promise<AppConfig | null> {
+  try {
+    const config = await readBlobJson<AppConfig>(BLOB_FILENAME, {
+      prefix: "app-data",
+    });
+    return config;
+  } catch (error: any) {
+    console.error("Error reading config from blob storage:", error);
+    if (error.statusCode === 404 || error.message?.includes("not found")) {
+      return null;
+    }
+    return null;
+  }
+}
 
+async function writeConfigBlob(config: AppConfig): Promise<void> {
+  try {
+    await writeBlobJson(BLOB_FILENAME, config, {
+      prefix: "app-data",
+    });
+  } catch (error: any) {
+    console.error("Error writing config to blob storage:", error);
+    throw new Error(`Config kaydedilemedi: ${error.message || "Bilinmeyen hata"}`);
+  }
+}
+
+// Local file system helpers (for local dev only)
+async function readConfigFileLocal(): Promise<AppConfig | null> {
+  if (USE_BLOB_STORAGE) {
+    throw new Error("Local file system should not be used when USE_BLOB_STORAGE is enabled");
+  }
+  
+  await ensureDataDir();
+  
   if (!existsSync(CONFIG_FILE)) {
-    // Create default config
-    const defaultConfig = getDefaultConfig();
-    await writeFile(CONFIG_FILE, JSON.stringify(defaultConfig, null, 2), "utf-8");
-    return defaultConfig;
+    return null;
   }
 
   try {
     const content = await readFile(CONFIG_FILE, "utf-8");
-    const parsed = JSON.parse(content);
+    return JSON.parse(content);
+  } catch (error) {
+    console.error("Error reading config file:", error);
+    return null;
+  }
+}
+
+async function writeConfigFileLocal(config: AppConfig): Promise<void> {
+  if (USE_BLOB_STORAGE) {
+    throw new Error("Local file system should not be used when USE_BLOB_STORAGE is enabled");
+  }
+  
+  await ensureDataDir();
+  await writeFile(CONFIG_FILE, JSON.stringify(config, null, 2), "utf-8");
+}
+
+// Unified read/write functions
+async function readConfigFile(): Promise<AppConfig | null> {
+  if (USE_BLOB_STORAGE) {
+    return await readConfigBlob();
+  } else {
+    return await readConfigFileLocal();
+  }
+}
+
+async function writeConfigFile(config: AppConfig): Promise<void> {
+  if (USE_BLOB_STORAGE) {
+    await writeConfigBlob(config);
+  } else {
+    await writeConfigFileLocal(config);
+  }
+}
+
+export async function getConfig(): Promise<AppConfig> {
+  const config = await readConfigFile();
+
+  if (!config) {
+    // Create default config
+    const defaultConfig = getDefaultConfig();
+    await writeConfigFile(defaultConfig);
+    return defaultConfig;
+  }
+
+  try {
+    const parsed = config;
     
     // Migrate old config format to new AppConfig format
     if (!parsed.pricing && !parsed.marketing) {
       // Old format - wrap in AppConfig
       const migrated: AppConfig = {
-        pricing: parsed as PricingConfig,
+        pricing: parsed as unknown as PricingConfig,
         marketing: getDefaultMarketingConfig(),
         ui: getDefaultUIConfig(),
+        season: getDefaultSeasonConfig(),
       };
-      await writeFile(CONFIG_FILE, JSON.stringify(migrated, null, 2), "utf-8");
+      await writeConfigFile(migrated);
       return migrated;
     }
     
@@ -302,23 +389,22 @@ export async function getConfig(): Promise<AppConfig> {
     }
     
     // Only save if we added missing configs
-    if (!parsed.marketing || !parsed.ui || !parsed.ui.banner || !parsed.season) {
-      await writeFile(CONFIG_FILE, JSON.stringify(parsed, null, 2), "utf-8");
+    const needsSave = !parsed.marketing || !parsed.ui || !parsed.ui.banner || !parsed.season;
+    if (needsSave) {
+      await writeConfigFile(parsed as AppConfig);
     }
     
     return parsed as AppConfig;
   } catch (error) {
-    console.error("Error reading config file:", error);
-    // Return default config if file is corrupted
+    console.error("Error processing config:", error);
+    // Return default config if config is corrupted
     const defaultConfig = getDefaultConfig();
-    await writeFile(CONFIG_FILE, JSON.stringify(defaultConfig, null, 2), "utf-8");
+    await writeConfigFile(defaultConfig);
     return defaultConfig;
   }
 }
 
 export async function saveConfig(config: AppConfig): Promise<void> {
-  await ensureDataDir();
-  
   // Validate pricing config
   if (config.pricing.a3Multiplier <= 0) {
     throw new Error("A3 multiplier must be positive");
@@ -328,6 +414,6 @@ export async function saveConfig(config: AppConfig): Promise<void> {
     throw new Error("Shipping tiers are required");
   }
 
-  await writeFile(CONFIG_FILE, JSON.stringify(config, null, 2), "utf-8");
+  await writeConfigFile(config);
 }
 

@@ -76,8 +76,9 @@ export async function createPaytrIframeToken(
   const cleanBaseUrl = baseUrl.replace(/\/$/, "");
   
   // Prepare all fields as strings for PayTR
-  const merchantOid = input.merchantOid.trim();
-  const email = input.email.trim();
+  // IMPORTANT: Trim values FIRST, then use them in both hash calculation and form data
+  const merchantOid = String(input.merchantOid).trim();
+  const email = String(input.email).trim().toLowerCase(); // PayTR expects lowercase email
   const currency = input.currency || "TL";
   const testMode = PAYTR_TEST_MODE ? "1" : "0";
   const noInstallment = String(input.noInstallment ?? 0);
@@ -94,34 +95,45 @@ export async function createPaytrIframeToken(
   
   // Build hash string EXACTLY as per PayTR's official Node.js example
   // Format: merchant_id + merchant_oid + email + payment_amount + merchant_salt
-  // IMPORTANT: All values must be strings, no spaces, no newlines
-  const hashStr = String(PAYTR_MERCHANT_ID) + String(merchantOid) + String(email) + String(paymentAmountKurus) + String(PAYTR_MERCHANT_SALT);
+  // IMPORTANT: 
+  // - All values must be strings
+  // - No spaces, no newlines
+  // - Values must match EXACTLY with form data (same trimming, same format)
+  // - Email should be lowercase
+  
+  // Prepare values for hash calculation - these SAME values will be used in form data
+  const merchantIdStr = String(PAYTR_MERCHANT_ID).trim();
+  const merchantSaltStr = String(PAYTR_MERCHANT_SALT).trim();
+  const paymentAmountStr = String(paymentAmountKurus);
+  
+  // Build hash string - ensure no whitespace in any part
+  const hashStr = merchantIdStr + merchantOid + email + paymentAmountStr + merchantSaltStr;
   
   // Calculate hash: SHA256 then Base64 encode
   const paytrToken = crypto.createHash("sha256").update(hashStr, "utf8").digest("base64");
   
-  // Debug logging (only in test mode or when needed)
-  if (PAYTR_TEST_MODE) {
-    console.log("PayTR hash calculation debug:", {
-      merchantId: PAYTR_MERCHANT_ID,
-      merchantOid,
-      email,
-      paymentAmountKurus,
-      merchantSalt: PAYTR_MERCHANT_SALT ? "***" + PAYTR_MERCHANT_SALT.slice(-4) : "missing",
-      hashStrLength: hashStr.length,
-      hashStrPreview: hashStr.substring(0, 50) + "...",
-      paytrTokenLength: paytrToken.length,
-      paytrTokenPreview: paytrToken.substring(0, 20) + "...",
-    });
-  }
+  // Debug logging - always log in production too for troubleshooting
+  console.log("PayTR hash calculation debug:", {
+    merchantId: merchantIdStr,
+    merchantOid,
+    email,
+    paymentAmount: paymentAmountStr,
+    merchantSalt: merchantSaltStr ? "***" + merchantSaltStr.slice(-4) : "missing",
+    hashStrLength: hashStr.length,
+    hashStrPreview: hashStr.substring(0, 50) + "...",
+    hashStrFull: hashStr, // Log full hash string for debugging
+    paytrTokenLength: paytrToken.length,
+    paytrTokenPreview: paytrToken.substring(0, 20) + "...",
+  });
   
   // Prepare form data
+  // IMPORTANT: Use the EXACT same values that were used in hash calculation
   const formData = new URLSearchParams();
-  formData.append("merchant_id", PAYTR_MERCHANT_ID);
+  formData.append("merchant_id", merchantIdStr); // Use trimmed version
   formData.append("user_ip", input.userIp);
   formData.append("merchant_oid", merchantOid);
   formData.append("email", email);
-  formData.append("payment_amount", String(paymentAmountKurus));
+  formData.append("payment_amount", paymentAmountStr); // Use same string format
   formData.append("currency", currency);
   formData.append("user_basket", userBasket);
   formData.append("no_installment", noInstallment);
@@ -136,7 +148,7 @@ export async function createPaytrIframeToken(
   formData.append("timeout_limit", timeoutLimit);
   formData.append("lang", lang);
   formData.append("merchant_key", PAYTR_MERCHANT_KEY);
-  formData.append("merchant_salt", PAYTR_MERCHANT_SALT);
+  formData.append("merchant_salt", merchantSaltStr); // Use same trimmed value as in hash
   formData.append("paytr_token", paytrToken);
   
   // Add notification URL if provided

@@ -1861,6 +1861,32 @@ export default function AdminPage() {
                         </div>
 
                         {config.ui?.banner?.imageEnabled && (
+                          <div className="flex items-center mt-1">
+                            <input
+                              type="checkbox"
+                              id="imageHasText"
+                              checked={config.ui?.banner?.imageHasText || false}
+                              onChange={(e) => {
+                                setConfig({
+                                  ...config,
+                                  ui: {
+                                    ...config.ui,
+                                    banner: {
+                                      ...config.ui?.banner,
+                                      imageHasText: e.target.checked,
+                                    },
+                                  },
+                                });
+                              }}
+                              className="mr-2"
+                            />
+                            <label htmlFor="imageHasText" className="text-sm font-medium text-gray-700">
+                              Banner görselinin içinde yazı var <span className="text-gray-400 font-normal">(işaretliyse sadece buton gösterilir, metin gizlenir)</span>
+                            </label>
+                          </div>
+                        )}
+
+                        {config.ui?.banner?.imageEnabled && (
                           <div className="space-y-6">
                             {/* ── Hazır Bannerlar Galerisi ── */}
                             <div className="border border-blue-200 rounded-lg p-4 bg-blue-50">

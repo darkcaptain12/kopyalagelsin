@@ -94,6 +94,7 @@ export interface UIConfig {
     textColor: string; // CSS color
     imageEnabled: boolean;
     imagePath: string | null; // Path to banner image
+    imageHasText?: boolean; // Banner görselinin içinde yazı var mı? true → sadece buton göster
   };
   // Footer
   footer: {
@@ -194,6 +195,7 @@ function getDefaultUIConfig(): UIConfig {
       textColor: "#ffffff",
       imageEnabled: true,
       imagePath: "/logo/favicon.png",
+      imageHasText: false,
     },
     footer: {
       description: "Öğrenciler için uygun fiyatlı dijital çıktı hizmeti. PDF dosyanızı yükleyin, çıktınızı alın.",

@@ -107,6 +107,7 @@ export default function Hero() {
       {/* Banner Background Image */}
       {banner.imageEnabled && bannerImagePath ? (
         <div className="relative w-full" style={{ aspectRatio: bannerAspectRatio }}>
+          {/* Banner görseli */}
           {bannerImageUrl && (bannerImageUrl.startsWith("http://") || bannerImageUrl.startsWith("https://")) ? (
             <img
               key={bannerImageUrl}
@@ -126,6 +127,29 @@ export default function Hero() {
               sizes="100vw"
             />
           )}
+
+          {/* Overlay: yazı + buton — banner görselinde yazı yoksa ikisi de, varsa sadece buton */}
+          <div className="absolute inset-0 flex flex-col items-center justify-end pb-8 md:pb-12">
+            {!banner.imageHasText && (
+              <div className="text-center px-4 mb-4" style={{ color: banner.textColor || "#ffffff" }}>
+                {banner.title && (
+                  <h1 className="text-3xl md:text-5xl font-bold drop-shadow-lg mb-3">{banner.title}</h1>
+                )}
+                {banner.subtitle && (
+                  <p className="text-lg md:text-xl opacity-90 drop-shadow-md">{banner.subtitle}</p>
+                )}
+              </div>
+            )}
+            {banner.buttonLink && (
+              <Link
+                href={banner.buttonLink}
+                className="inline-block bg-white px-6 py-3 md:px-8 md:py-4 rounded-lg font-semibold text-sm md:text-lg hover:opacity-90 transition shadow-lg"
+                style={{ color: banner.backgroundColor || "#2563eb" }}
+              >
+                {banner.buttonText || "Çıktı Siparişi Ver"}
+              </Link>
+            )}
+          </div>
         </div>
       ) : (
         <div

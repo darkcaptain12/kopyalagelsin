@@ -1,73 +1,30 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import type { AppConfig } from "@/lib/config";
 
 export default function Hero() {
   const [config, setConfig] = useState<AppConfig | null>(null);
+  const configVersionRef = useRef<string>("");
 
   useEffect(() => {
-    // Add cache busting to ensure fresh config
     const loadConfig = () => {
-      fetch(`/api/config?t=${Date.now()}`, {
-        cache: "no-store",
-        headers: {
-          "Cache-Control": "no-cache",
-        },
-      })
+      fetch(`/api/config?t=${Date.now()}`, { cache: "no-store" })
         .then((res) => res.json())
         .then((data: AppConfig) => {
-          setConfig(data);
+          // imagePath veya diğer banner alanları değiştiyse state güncelle
+          const newVersion = JSON.stringify(data.ui?.banner) + JSON.stringify(data.season);
+          if (newVersion !== configVersionRef.current) {
+            configVersionRef.current = newVersion;
+            setConfig(data);
+          }
         })
-      .catch((err) => {
-        console.error("Failed to load config:", err);
-        // Fallback to minimal default config if API fails
-        setConfig({
-          ui: {
-            banner: {
-              title: "Öğrenciler için uygun fiyatlı dijital çıktı hizmeti",
-              subtitle: "PDF dosyanı yükle, baskı seçeneklerini seç, online öde, çıktın kapına gelsin.",
-              buttonText: "Çıktı Siparişi Ver",
-              buttonLink: "#siparis",
-              backgroundColor: "#2563eb",
-              backgroundColorEnd: "#1e40af",
-              textColor: "#ffffff",
-              imageEnabled: true,
-              imagePath: "/logo/favicon.png",
-            },
-            announcementBar: {
-              enabled: false,
-              text: "",
-              link: null,
-              backgroundColor: "#3b82f6",
-              textColor: "#ffffff",
-            },
-            footer: {
-              description: "",
-              phone: "",
-              email: "",
-              address: "",
-              copyright: "",
-            },
-          },
-          season: {
-            currentSeasonMode: "normal",
-            seasons: {
-              normal: { mode: "normal", bannerUrl: null, priceMultiplier: 1.0 },
-              vize: { mode: "vize", bannerUrl: null, priceMultiplier: 1.0 },
-              final: { mode: "final", bannerUrl: null, priceMultiplier: 1.0 },
-              tez: { mode: "tez", bannerUrl: null, priceMultiplier: 1.0 },
-            },
-          },
-        } as AppConfig);
-      });
+        .catch(() => {/* sessizce atla */});
     };
-    
+
     loadConfig();
-    // Reload config every 30 seconds to catch updates
-    const interval = setInterval(loadConfig, 30000);
+    const interval = setInterval(loadConfig, 5000); // 5 saniyede bir kontrol
     return () => clearInterval(interval);
   }, []);
 
@@ -84,79 +41,71 @@ export default function Hero() {
   const bannerImagePath = seasonBannerUrl || config.ui.banner.imagePath || "/logo/favicon.png";
   const banner = config.ui.banner;
   
-  // Debug: log banner info
-  if (typeof window !== "undefined") {
-    console.log("Banner Debug:", {
-      currentSeasonMode,
-      seasonBannerUrl,
-      defaultBannerPath: config.ui.banner.imagePath,
-      finalBannerPath: bannerImagePath,
-    });
-  }
-  
-  // Add cache busting to banner image URL - use config timestamp for consistency
-  const bannerImageUrl = bannerImagePath
-    ? `${bannerImagePath}${bannerImagePath.includes("?") ? "&" : "?"}v=${Date.now()}`
+  // Cache-bust: path değiştiğinde tarayıcı önbelleğini atla
+  const cacheBust = `?v=${configVersionRef.current.length}`;
+  const bannerSrc = bannerImagePath
+    ? `${bannerImagePath}${bannerImagePath.includes("?") ? "&" : "?"}cb=${encodeURIComponent(bannerImagePath)}`
     : null;
 
-  // Aspect ratio: 2752 / 1536 ≈ 1.791
-  const bannerAspectRatio = 2752 / 1536;
+  const fitMode = banner.imageFit || "cover";
+  const textColor = banner.textColor || "#ffffff";
+  const bgColor   = banner.backgroundColor || "#2563eb";
 
   return (
     <section className="relative w-full overflow-hidden">
-      {/* Banner Background Image */}
-      {banner.imageEnabled && bannerImagePath ? (
-        <div className="relative w-full" style={{ aspectRatio: bannerAspectRatio }}>
-          {/* Banner görseli */}
-          {bannerImageUrl && (bannerImageUrl.startsWith("http://") || bannerImageUrl.startsWith("https://")) ? (
-            <img
-              key={bannerImageUrl}
-              src={bannerImageUrl}
-              alt="Banner"
-              className="w-full h-full object-cover"
-              onError={() => console.error("Banner image failed to load:", bannerImageUrl)}
-            />
-          ) : (
-            <Image
-              key={bannerImagePath}
-              src={bannerImagePath}
-              alt="Banner"
-              fill
-              className="object-cover"
-              priority
-              sizes="100vw"
-            />
-          )}
+      {banner.imageEnabled && bannerSrc ? (
+        /* ── Görsel banner ── */
+        <div className="relative w-full">
+          {/* <img> kullanıyoruz: Next.js Image cache sorununu önler */}
+          <img
+            key={bannerSrc}                      // path değişince React remount yapar
+            src={bannerSrc}
+            alt="Banner"
+            className="w-full block"
+            style={{
+              objectFit: fitMode,
+              // contain modunda görsel tam sığar, cover modunda dolar
+              maxHeight: fitMode === "contain" ? "none" : "85vh",
+              width: "100%",
+            }}
+          />
 
-          {/* Overlay: yazı + buton — banner görselinde yazı yoksa ikisi de, varsa sadece buton */}
-          <div className="absolute inset-0 flex flex-col items-center justify-end pb-8 md:pb-12">
-            {!banner.imageHasText && (
-              <div className="text-center px-4 mb-4" style={{ color: banner.textColor || "#ffffff" }}>
-                {banner.title && (
-                  <h1 className="text-3xl md:text-5xl font-bold drop-shadow-lg mb-3">{banner.title}</h1>
-                )}
-                {banner.subtitle && (
-                  <p className="text-lg md:text-xl opacity-90 drop-shadow-md">{banner.subtitle}</p>
-                )}
-              </div>
-            )}
-            {banner.buttonLink && (
-              <Link
-                href={banner.buttonLink}
-                className="inline-block bg-white px-6 py-3 md:px-8 md:py-4 rounded-lg font-semibold text-sm md:text-lg hover:opacity-90 transition shadow-lg"
-                style={{ color: banner.backgroundColor || "#2563eb" }}
-              >
-                {banner.buttonText || "Çıktı Siparişi Ver"}
-              </Link>
-            )}
+          {/* Overlay: buton her zaman, yazı sadece imageHasText=false ise */}
+          <div className="absolute inset-0 flex flex-col items-center justify-end pb-8 md:pb-12 pointer-events-none">
+            <div className="pointer-events-auto text-center px-4">
+              {!banner.imageHasText && (
+                <div className="mb-4" style={{ color: textColor }}>
+                  {banner.title && (
+                    <h1 className="text-3xl md:text-5xl font-bold drop-shadow-lg mb-3">
+                      {banner.title}
+                    </h1>
+                  )}
+                  {banner.subtitle?.trim() && (
+                    <p className="text-lg md:text-xl opacity-90 drop-shadow-md">
+                      {banner.subtitle}
+                    </p>
+                  )}
+                </div>
+              )}
+              {banner.buttonLink && (
+                <Link
+                  href={banner.buttonLink}
+                  className="inline-block bg-white px-6 py-3 md:px-8 md:py-4 rounded-lg font-semibold text-sm md:text-lg hover:opacity-90 transition shadow-lg"
+                  style={{ color: bgColor }}
+                >
+                  {banner.buttonText || "Çıktı Siparişi Ver"}
+                </Link>
+              )}
+            </div>
           </div>
         </div>
       ) : (
+        /* ── Renkli gradient banner (görsel yok) ── */
         <div
           className="w-full py-20"
           style={{
-            background: `linear-gradient(to right, ${banner.backgroundColor}, ${banner.backgroundColorEnd})`,
-            color: banner.textColor,
+            background: `linear-gradient(to right, ${bgColor}, ${banner.backgroundColorEnd || "#1e40af"})`,
+            color: textColor,
           }}
         >
           <div className="container mx-auto px-4">
@@ -167,9 +116,7 @@ export default function Hero() {
                 <Link
                   href={banner.buttonLink}
                   className="inline-block bg-white px-5 py-2.5 md:px-8 md:py-4 rounded-lg font-semibold text-sm md:text-lg hover:opacity-90 transition shadow-lg mt-3 md:mt-4"
-                  style={{
-                    color: banner.backgroundColor,
-                  }}
+                  style={{ color: bgColor }}
                 >
                   {banner.buttonText || "Çıktı Siparişi Ver"}
                 </Link>

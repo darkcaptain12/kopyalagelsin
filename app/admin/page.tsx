@@ -1888,28 +1888,59 @@ export default function AdminPage() {
                         </div>
 
                         {config.ui?.banner?.imageEnabled && (
-                          <div className="flex items-center mt-1">
-                            <input
-                              type="checkbox"
-                              id="imageHasText"
-                              checked={config.ui?.banner?.imageHasText || false}
-                              onChange={(e) => {
-                                setConfig({
-                                  ...config,
-                                  ui: {
-                                    ...config.ui,
-                                    banner: {
-                                      ...config.ui?.banner,
-                                      imageHasText: e.target.checked,
+                          <div className="space-y-2 mt-1">
+                            {/* Yazı var mı toggle */}
+                            <div className="flex items-center">
+                              <input
+                                type="checkbox"
+                                id="imageHasText"
+                                checked={config.ui?.banner?.imageHasText || false}
+                                onChange={(e) => {
+                                  setConfig({
+                                    ...config,
+                                    ui: {
+                                      ...config.ui,
+                                      banner: { ...config.ui?.banner, imageHasText: e.target.checked },
                                     },
-                                  },
-                                });
-                              }}
-                              className="mr-2"
-                            />
-                            <label htmlFor="imageHasText" className="text-sm font-medium text-gray-700">
-                              Banner görselinin içinde yazı var <span className="text-gray-400 font-normal">(işaretliyse sadece buton gösterilir, metin gizlenir)</span>
-                            </label>
+                                  });
+                                }}
+                                className="mr-2"
+                              />
+                              <label htmlFor="imageHasText" className="text-sm font-medium text-gray-700">
+                                Görselin içinde yazı var <span className="text-gray-400 font-normal">(sadece buton gösterilir)</span>
+                              </label>
+                            </div>
+
+                            {/* Sığdırma modu */}
+                            <div className="flex items-center gap-4">
+                              <span className="text-sm font-medium text-gray-700">Sığdırma:</span>
+                              <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name="imageFit"
+                                  value="cover"
+                                  checked={(config.ui?.banner?.imageFit || "cover") === "cover"}
+                                  onChange={() => setConfig({
+                                    ...config,
+                                    ui: { ...config.ui, banner: { ...config.ui?.banner, imageFit: "cover" } },
+                                  })}
+                                />
+                                Doldur (Cover)
+                              </label>
+                              <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name="imageFit"
+                                  value="contain"
+                                  checked={config.ui?.banner?.imageFit === "contain"}
+                                  onChange={() => setConfig({
+                                    ...config,
+                                    ui: { ...config.ui, banner: { ...config.ui?.banner, imageFit: "contain" } },
+                                  })}
+                                />
+                                Sığdır (Contain)
+                              </label>
+                            </div>
                           </div>
                         )}
 

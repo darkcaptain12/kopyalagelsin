@@ -95,6 +95,7 @@ export interface UIConfig {
     imageEnabled: boolean;
     imagePath: string | null; // Path to banner image
     imageHasText?: boolean; // Banner görselinin içinde yazı var mı? true → sadece buton göster
+    imageFit?: "cover" | "contain"; // Görsel sığdırma modu
   };
   // Footer
   footer: {

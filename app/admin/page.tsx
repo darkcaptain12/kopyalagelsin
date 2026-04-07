@@ -284,17 +284,23 @@ export default function AdminPage() {
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case "paid": return "Ödendi";
-      case "pending": return "Beklemede";
-      case "failed": return "Başarısız";
+      case "paid":          return "Ödendi";
+      case "pending":       return "Beklemede";
+      case "failed":        return "Başarısız";
+      case "hazirlaniyor":  return "Hazırlanıyor";
+      case "kargolandi":    return "Kargolandı";
+      case "iptal":         return "İptal";
       default: return status;
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "paid": return "bg-green-100 text-green-800";
-      case "pending": return "bg-yellow-100 text-yellow-800";
+      case "paid":          return "bg-green-100 text-green-800";
+      case "pending":       return "bg-yellow-100 text-yellow-800";
+      case "hazirlaniyor":  return "bg-blue-100 text-blue-800";
+      case "kargolandi":    return "bg-indigo-100 text-indigo-800";
+      case "iptal":         return "bg-red-100 text-red-700";
       case "failed": return "bg-red-100 text-red-800";
       default: return "bg-gray-100 text-gray-800";
     }
@@ -608,13 +614,34 @@ export default function AdminPage() {
                             {formatCurrency(order.totalAmount)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span
-                              className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(
-                                order.paytrStatus
-                              )}`}
+                            <select
+                              value={order.paytrStatus}
+                              onChange={async (e) => {
+                                const newStatus = e.target.value;
+                                try {
+                                  const res = await fetch(`/api/admin/orders/${order.id}`, {
+                                    method: "PATCH",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ status: newStatus }),
+                                  });
+                                  if (res.ok) {
+                                    setOrders((prev) =>
+                                      prev.map((o) =>
+                                        o.id === order.id ? { ...o, paytrStatus: newStatus as any } : o
+                                      )
+                                    );
+                                  }
+                                } catch {}
+                              }}
+                              className={`text-xs font-semibold rounded-full px-2 py-1 border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-400 ${getStatusColor(order.paytrStatus)}`}
                             >
-                              {getStatusText(order.paytrStatus)}
-                            </span>
+                              <option value="pending">Beklemede</option>
+                              <option value="paid">Ödendi</option>
+                              <option value="hazirlaniyor">Hazırlanıyor</option>
+                              <option value="kargolandi">Kargolandı</option>
+                              <option value="iptal">İptal</option>
+                              <option value="failed">Başarısız</option>
+                            </select>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
                             <button

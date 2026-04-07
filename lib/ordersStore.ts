@@ -4,7 +4,7 @@ import path from "path";
 import { v4 as uuidv4 } from "uuid";
 import { readBlobJson, writeBlobJson } from "./blobStorage";
 
-export type PaytrStatus = "pending" | "paid" | "failed";
+export type PaytrStatus = "pending" | "paid" | "failed" | "hazirlaniyor" | "kargolandi" | "iptal";
 
 export interface Order {
   id: string;
@@ -204,6 +204,15 @@ export async function markMailSent(id: string): Promise<void> {
     orders[idx].mailSent = true;
     await writeOrdersFile(orders);
   }
+}
+
+export async function updateOrderAdminStatus(id: string, status: PaytrStatus): Promise<Order | null> {
+  const orders = await readOrdersFile();
+  const idx = orders.findIndex((o) => o.id === id);
+  if (idx === -1) return null;
+  orders[idx].paytrStatus = status;
+  await writeOrdersFile(orders);
+  return orders[idx];
 }
 
 export async function clearAllOrders(): Promise<number> {

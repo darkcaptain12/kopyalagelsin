@@ -322,6 +322,29 @@ async function writeConfigFileLocal(config: AppConfig): Promise<void> {
   await writeFile(CONFIG_FILE, JSON.stringify(config, null, 2), "utf-8");
 }
 
+// ─── In-memory cache (serverless function instance başına) ───────────────────
+// Her Blob okuması bant genişliği tüketir. 60 sn TTL ile çağrı sayısını düşür.
+let _configCache: AppConfig | null = null;
+let _configCacheAt = 0;
+const CONFIG_CACHE_TTL_MS = 60 * 1000; // 60 saniye
+
+function getConfigFromCache(): AppConfig | null {
+  if (_configCache && Date.now() - _configCacheAt < CONFIG_CACHE_TTL_MS) {
+    return _configCache;
+  }
+  return null;
+}
+
+function setConfigCache(config: AppConfig): void {
+  _configCache = config;
+  _configCacheAt = Date.now();
+}
+
+function invalidateConfigCache(): void {
+  _configCache = null;
+  _configCacheAt = 0;
+}
+
 // Unified read/write functions
 async function readConfigFile(): Promise<AppConfig | null> {
   if (USE_BLOB_STORAGE) {
@@ -332,6 +355,7 @@ async function readConfigFile(): Promise<AppConfig | null> {
 }
 
 async function writeConfigFile(config: AppConfig): Promise<void> {
+  invalidateConfigCache(); // Cache'i temizle — bir sonraki okumada Blob'dan alır
   if (USE_BLOB_STORAGE) {
     await writeConfigBlob(config);
   } else {
@@ -340,12 +364,20 @@ async function writeConfigFile(config: AppConfig): Promise<void> {
 }
 
 export async function getConfig(): Promise<AppConfig> {
+  // Cache hit — Blob okumadan döner
+  const cached = getConfigFromCache();
+  if (cached) return cached;
   const config = await readConfigFile();
 
   if (!config) {
-    // Create default config
+    // Config yok — default oluştur. Blob askıya alınmışsa yazmayı dene ama hata olursa yine de default döndür
     const defaultConfig = getDefaultConfig();
-    await writeConfigFile(defaultConfig);
+    try {
+      await writeConfigFile(defaultConfig);
+    } catch (writeErr) {
+      console.warn("Config kaydedilemedi (Blob sorunu?), geçici default kullanılıyor:", writeErr);
+    }
+    setConfigCache(defaultConfig);
     return defaultConfig;
   }
 
@@ -405,13 +437,15 @@ export async function getConfig(): Promise<AppConfig> {
     if (needsSave) {
       await writeConfigFile(parsed as AppConfig);
     }
-    
+
+    setConfigCache(parsed as AppConfig);
     return parsed as AppConfig;
   } catch (error) {
     console.error("Error processing config:", error);
     // Return default config if config is corrupted
     const defaultConfig = getDefaultConfig();
     await writeConfigFile(defaultConfig);
+    setConfigCache(defaultConfig);
     return defaultConfig;
   }
 }

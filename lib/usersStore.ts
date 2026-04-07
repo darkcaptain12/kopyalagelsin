@@ -93,21 +93,48 @@ async function writeUsersFileLocal(users: User[]): Promise<void> {
   await writeFile(USERS_FILE, JSON.stringify(users, null, 2), "utf-8");
 }
 
+// ─── In-memory cache ─────────────────────────────────────────────────────────
+let _usersCache: User[] | null = null;
+let _usersCacheAt = 0;
+const USERS_CACHE_TTL_MS = 30 * 1000; // 30 saniye
+
+function getUsersFromCache(): User[] | null {
+  if (_usersCache && Date.now() - _usersCacheAt < USERS_CACHE_TTL_MS) {
+    return _usersCache;
+  }
+  return null;
+}
+
+function setUsersCache(users: User[]): void {
+  _usersCache = users;
+  _usersCacheAt = Date.now();
+}
+
+function invalidateUsersCache(): void {
+  _usersCache = null;
+  _usersCacheAt = 0;
+}
+
 // Unified read/write functions
 async function readUsersFile(): Promise<User[]> {
-  if (USE_BLOB_STORAGE) {
-    return await readUsersBlob();
-  } else {
-    return await readUsersFileLocal();
-  }
+  const cached = getUsersFromCache();
+  if (cached) return cached;
+
+  const users = USE_BLOB_STORAGE
+    ? await readUsersBlob()
+    : await readUsersFileLocal();
+  setUsersCache(users);
+  return users;
 }
 
 async function writeUsersFile(users: User[]): Promise<void> {
+  invalidateUsersCache(); // Sonraki okuma Blob'dan taze veri alır
   if (USE_BLOB_STORAGE) {
     await writeUsersBlob(users);
   } else {
     await writeUsersFileLocal(users);
   }
+  setUsersCache(users); // Yazılan veriyi hemen cache'e al
 }
 
 function generateReferralCode(name: string): string {

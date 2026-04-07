@@ -96,21 +96,48 @@ async function writeCouponsFileLocal(coupons: Coupon[]): Promise<void> {
   await writeFile(COUPONS_FILE, JSON.stringify(coupons, null, 2), "utf-8");
 }
 
+// ─── In-memory cache ─────────────────────────────────────────────────────────
+let _couponsCache: Coupon[] | null = null;
+let _couponsCacheAt = 0;
+const COUPONS_CACHE_TTL_MS = 30 * 1000; // 30 saniye
+
+function getCouponsFromCache(): Coupon[] | null {
+  if (_couponsCache && Date.now() - _couponsCacheAt < COUPONS_CACHE_TTL_MS) {
+    return _couponsCache;
+  }
+  return null;
+}
+
+function setCouponsCache(coupons: Coupon[]): void {
+  _couponsCache = coupons;
+  _couponsCacheAt = Date.now();
+}
+
+function invalidateCouponsCache(): void {
+  _couponsCache = null;
+  _couponsCacheAt = 0;
+}
+
 // Unified read/write functions
 async function readCouponsFile(): Promise<Coupon[]> {
-  if (USE_BLOB_STORAGE) {
-    return await readCouponsBlob();
-  } else {
-    return await readCouponsFileLocal();
-  }
+  const cached = getCouponsFromCache();
+  if (cached) return cached;
+
+  const coupons = USE_BLOB_STORAGE
+    ? await readCouponsBlob()
+    : await readCouponsFileLocal();
+  setCouponsCache(coupons);
+  return coupons;
 }
 
 async function writeCouponsFile(coupons: Coupon[]): Promise<void> {
+  invalidateCouponsCache();
   if (USE_BLOB_STORAGE) {
     await writeCouponsBlob(coupons);
   } else {
     await writeCouponsFileLocal(coupons);
   }
+  setCouponsCache(coupons);
 }
 
 function generateCouponCode(discountPercent: number): string {

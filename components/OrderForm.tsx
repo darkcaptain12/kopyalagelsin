@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Script from "next/script";
@@ -50,7 +50,15 @@ export default function OrderForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string>("");
   const [paymentToken, setPaymentToken] = useState<string | null>(null);
+  const errorRef = useRef<HTMLDivElement>(null);
   const [orderId, setOrderId] = useState<string | null>(null);
+
+  // Hata mesajı set edilince otomatik scroll
+  useEffect(() => {
+    if (error && errorRef.current) {
+      errorRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [error]);
 
   // Fetch config and user on mount
   useEffect(() => {
@@ -528,7 +536,7 @@ export default function OrderForm() {
               noValidate
             >
               {error && (
-                <div data-error="true" className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+                <div ref={errorRef} data-error="true" className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
                   <strong>Hata:</strong> {error}
                 </div>
               )}
@@ -851,12 +859,17 @@ export default function OrderForm() {
                             disabled={telDikisDisabled}
                             className="sr-only"
                           />
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src="/urun_tipleri/tel_dikis.png"
-                            alt="Tel Dikiş"
-                            className="w-8 h-8 mb-2 object-contain"
-                          />
+                          {/* Katlamalı Tel Dikiş ikonu — iki sayfa + zımba */}
+                          <svg className="w-8 h-8 mb-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                              d="M5 5a1 1 0 011-1h5v16H6a1 1 0 01-1-1V5z"/>
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                              d="M19 5a1 1 0 00-1-1h-5v16h5a1 1 0 001-1V5z"/>
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5}
+                              d="M10 8.5h4"/>
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5}
+                              d="M10 15.5h4"/>
+                          </svg>
                           <span className="font-semibold text-sm text-center leading-tight">
                             Katlamalı<br />Tel Dikiş
                           </span>
@@ -1194,7 +1207,8 @@ export default function OrderForm() {
 
           {/* Price Summary + Corporate Contact */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg shadow-lg p-6 sticky top-20">
+            <div className="sticky top-20 space-y-4">
+            <div className="bg-white rounded-lg shadow-lg p-6">
               <h3 className="text-xl font-semibold mb-4">Canlı Fiyat Hesaplama</h3>
               {priceBreakdown ? (
                 <div className="space-y-3">
@@ -1287,10 +1301,11 @@ export default function OrderForm() {
                   Fiyat hesaplamak için lütfen form alanlarını doldurun.
                 </p>
               )}
-            </div>
+            </div>{/* /fiyat kartı */}
 
             {/* Kurumsal Baskı İletişim */}
             <CorporateContact />
+            </div>{/* /sticky wrapper */}
           </div>
         </div>
       </div>

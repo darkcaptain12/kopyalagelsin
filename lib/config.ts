@@ -32,6 +32,7 @@ export interface A4Pricing {
 export interface BindingConfig {
   spiral: BindingPricing;
   american: BindingPricing;
+  telDikis: { price: number }; // Katlamalı Tel Dikiş — flat fiyat
 }
 
 export interface PricingConfig {
@@ -249,6 +250,7 @@ function getDefaultPricingConfig(): PricingConfig {
         upTo10: 30,
         over10: 25,
       },
+      telDikis: { price: 10 },
     },
     kdvRate: 0.20, // %20 KDV
   };
@@ -383,6 +385,13 @@ export async function getConfig(): Promise<AppConfig> {
       // Ensure footer exists
       if (!parsed.ui.footer) {
         parsed.ui.footer = getDefaultUIConfig().footer;
+      }
+    }
+
+    // Ensure telDikis binding config exists (migration for older configs)
+    if (!parsed.pricing?.binding?.telDikis) {
+      if (parsed.pricing?.binding) {
+        (parsed.pricing.binding as any).telDikis = { price: 10 };
       }
     }
 

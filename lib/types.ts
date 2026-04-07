@@ -3,7 +3,7 @@ import type { Totals } from "./pricing";
 export type Size = "A4" | "A3";
 export type Color = "siyah_beyaz" | "renkli";
 export type Side = "tek" | "cift";
-export type BindingType = "none" | "spiral" | "american";
+export type BindingType = "none" | "spiral" | "american" | "tel_dikis";
 
 export interface OrderFormData {
   size: Size | "";

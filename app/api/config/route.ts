@@ -1,10 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getConfig, saveConfig, type AppConfig } from "@/lib/config";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function GET() {
   try {
     const config = await getConfig();
-    return NextResponse.json(config);
+    return NextResponse.json(config, {
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate",
+        "Pragma": "no-cache",
+      },
+    });
   } catch (error: any) {
     console.error("Error fetching config:", error);
     return NextResponse.json({ error: "Config alınamadı." }, { status: 500 });

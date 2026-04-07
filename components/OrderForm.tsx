@@ -383,6 +383,12 @@ export default function OrderForm() {
       return;
     }
 
+    if (formData.bindingType === "tel_dikis" && formData.pageCount > 52) {
+      const errorMsg = "Katlamalı Tel Dikiş 52 sayfadan fazla dosyalar için uygun değildir.";
+      setError(errorMsg);
+      return;
+    }
+
     if (!pdfFile) {
       const errorMsg = "Lütfen bir PDF dosyası yükleyin.";
       setError(errorMsg);
@@ -559,6 +565,7 @@ export default function OrderForm() {
                       />
                       <div className="text-2xl font-bold mb-1">A4</div>
                       <div className="text-xs text-gray-600">Standart Boyut</div>
+                      <div className="text-xs text-gray-400">Standart 80 gr kağıt</div>
                       {formData.size === "A4" && (
                         <div className="absolute top-2 right-2">
                           <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
@@ -584,6 +591,7 @@ export default function OrderForm() {
                       />
                       <div className="text-2xl font-bold mb-1">A3</div>
                       <div className="text-xs text-gray-600">Büyük Boyut</div>
+                      <div className="text-xs text-gray-400">Standart 80 gr kağıt</div>
                       {formData.size === "A3" && (
                         <div className="absolute top-2 right-2">
                           <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
@@ -738,7 +746,7 @@ export default function OrderForm() {
                   <label className="block text-sm font-medium text-gray-700 mb-3">
                     Ciltleme Tipi <span className="text-red-500">*</span>
                   </label>
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <label
                       className={`relative flex flex-col items-center justify-center p-4 border-2 rounded-lg cursor-pointer transition-all ${
                         formData.bindingType === "none"
@@ -820,6 +828,55 @@ export default function OrderForm() {
                         </div>
                       )}
                     </label>
+
+                    {/* Katlamalı Tel Dikiş */}
+                    {(() => {
+                      const telDikisDisabled = formData.pageCount > 52;
+                      return (
+                        <label
+                          className={`relative flex flex-col items-center justify-center p-4 border-2 rounded-lg transition-all ${
+                            formData.bindingType === "tel_dikis"
+                              ? "border-blue-600 bg-blue-50 shadow-md cursor-pointer"
+                              : telDikisDisabled
+                              ? "border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed"
+                              : "border-gray-300 hover:border-gray-400 cursor-pointer"
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="bindingType"
+                            value="tel_dikis"
+                            checked={formData.bindingType === "tel_dikis"}
+                            onChange={(e) => handleRadioChange("bindingType", e.target.value)}
+                            disabled={telDikisDisabled}
+                            className="sr-only"
+                          />
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src="/urun_tipleri/tel_dikis.png"
+                            alt="Tel Dikiş"
+                            className="w-8 h-8 mb-2 object-contain"
+                          />
+                          <span className="font-semibold text-sm text-center leading-tight">
+                            Katlamalı<br />Tel Dikiş
+                          </span>
+                          {telDikisDisabled ? (
+                            <span className="text-xs text-gray-400 text-center mt-1 leading-tight">
+                              52 sayfadan fazla<br />dosyalar için uygun değildir
+                            </span>
+                          ) : (
+                            <span className="text-xs text-gray-500 mt-1">Max 52 sayfa</span>
+                          )}
+                          {formData.bindingType === "tel_dikis" && (
+                            <div className="absolute top-2 right-2">
+                              <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                              </svg>
+                            </div>
+                          )}
+                        </label>
+                      );
+                    })()}
                   </div>
                 </div>
 
@@ -1204,6 +1261,22 @@ export default function OrderForm() {
                           fill
                           className="object-contain"
                           priority={false}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {formData.bindingType === "tel_dikis" && (
+                    <div className="mt-6 pt-6 border-t border-gray-300">
+                      <h4 className="text-sm font-semibold text-gray-700 mb-3 text-center">
+                        Katlamalı Tel Dikiş Görünümü
+                      </h4>
+                      <div className="relative w-full h-48 rounded-lg overflow-hidden">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src="/urun_tipleri/tel_dikis.png"
+                          alt="Katlamalı Tel Dikiş"
+                          className="w-full h-full object-contain"
                         />
                       </div>
                     </div>

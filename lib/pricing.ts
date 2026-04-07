@@ -3,7 +3,7 @@ import type { AppConfig, PricingConfig, ShippingTier, SeasonConfig } from "./con
 export type Size = "A4" | "A3";
 export type Color = "siyah_beyaz" | "renkli";
 export type Side = "tek" | "cift";
-export type BindingType = "none" | "spiral" | "american";
+export type BindingType = "none" | "spiral" | "american" | "tel_dikis";
 
 export interface PricingParams {
   size: Size;
@@ -72,6 +72,14 @@ export function calculateBindingCost(
   }
 
   const bindingConfig = pricingConfig.binding;
+
+  // Katlamalı Tel Dikiş: flat fiyat per cilt, A3 multiplier uygulanmaz
+  if (bindingType === "tel_dikis") {
+    const telDikisConfig = (bindingConfig as any).telDikis;
+    const pricePerCilt = telDikisConfig?.price ?? 10;
+    return pricePerCilt * ciltCount;
+  }
+
   const bindingPricing =
     bindingType === "spiral" ? bindingConfig.spiral : bindingConfig.american;
 

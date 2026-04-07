@@ -18,7 +18,7 @@ export interface Order {
   size: "A4" | "A3";
   color: "siyah_beyaz" | "renkli";
   side: "tek" | "cift";
-  bindingType: "none" | "spiral" | "american";
+  bindingType: "none" | "spiral" | "american" | "tel_dikis";
   ciltCount: number;
   pageCount: number;
   pdfUrl: string; // Vercel Blob Storage URL

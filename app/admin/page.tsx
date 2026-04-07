@@ -1162,6 +1162,34 @@ export default function AdminPage() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Katlamalı Tel Dikiş */}
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <h4 className="font-medium mb-1">Katlamalı Tel Dikiş</h4>
+                    <p className="text-xs text-gray-500 mb-3">Max 52 sayfa — cilt başına sabit fiyat</p>
+                    <div>
+                      <label className="block text-sm text-gray-700 mb-1">Cilt Başı Ücret (₺)</label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        min="0"
+                        value={(config.pricing.binding as any).telDikis?.price ?? 10}
+                        onChange={(e) =>
+                          setConfig({
+                            ...config,
+                            pricing: {
+                              ...config.pricing,
+                              binding: {
+                                ...config.pricing.binding,
+                                telDikis: { price: parseFloat(e.target.value) || 0 },
+                              } as any,
+                            },
+                          })
+                        }
+                        className="w-full px-3 py-2 border rounded-md"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
 

@@ -5,7 +5,7 @@ import type { Order } from "@/lib/ordersStore";
 import type { AppConfig } from "@/lib/config";
 import type { Coupon } from "@/lib/couponsStore";
 
-type Tab = "orders" | "pricing" | "marketing" | "ui" | "campaign";
+type Tab = "orders" | "pricing" | "marketing" | "ui" | "campaign" | "users";
 
 export default function AdminPage() {
   const [password, setPassword] = useState("");
@@ -20,6 +20,8 @@ export default function AdminPage() {
   const [bannerUploading, setBannerUploading] = useState(false);
   const [localBanners, setLocalBanners] = useState<{filename: string; path: string}[]>([]);
   const [bannersLoading, setBannersLoading] = useState(false);
+  const [users, setUsers] = useState<any[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
   const [showClearOrdersModal, setShowClearOrdersModal] = useState(false);
   const [clearConfirmText, setClearConfirmText] = useState("");
   const [clearLoading, setClearLoading] = useState(false);
@@ -89,6 +91,14 @@ export default function AdminPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, searchName, searchOrderId, dateFrom, dateTo, selectedDate, filterView]);
 
+  // Üyeler tabına geçince kullanıcıları çek
+  useEffect(() => {
+    if (activeTab === "users" && isAuthenticated) {
+      fetchUsers();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, isAuthenticated]);
+
   // UI tabına geçince local banner listesini çek
   useEffect(() => {
     if (activeTab === "ui" && isAuthenticated) {
@@ -100,6 +110,21 @@ export default function AdminPage() {
         .finally(() => setBannersLoading(false));
     }
   }, [activeTab, isAuthenticated]);
+
+  const fetchUsers = async () => {
+    try {
+      setUsersLoading(true);
+      const response = await fetch("/api/admin/users");
+      if (response.ok) {
+        const data = await response.json();
+        setUsers(data.users || []);
+      }
+    } catch (err) {
+      console.error("Üyeler yüklenemedi:", err);
+    } finally {
+      setUsersLoading(false);
+    }
+  };
 
   const fetchConfig = async () => {
     try {
@@ -407,6 +432,16 @@ export default function AdminPage() {
               }`}
             >
               Kampanya Modu
+            </button>
+            <button
+              onClick={() => setActiveTab("users")}
+              className={`px-6 py-3 font-medium ${
+                activeTab === "users"
+                  ? "border-b-2 border-blue-600 text-blue-600"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              Üyeler
             </button>
           </div>
 
@@ -2533,6 +2568,87 @@ export default function AdminPage() {
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
                   <p className="mt-2 text-gray-600">Yükleniyor...</p>
                 </div>
+              )}
+            </div>
+          )}
+
+          {/* Users Tab */}
+          {activeTab === "users" && (
+            <div>
+              <div className="bg-white rounded-lg shadow-md p-6 mb-4 flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-semibold">Üye Listesi</h3>
+                  <p className="text-sm text-gray-500 mt-1">Kayıtlı tüm üyeler — Vercel Blob&apos;a kaydedilir</p>
+                </div>
+                <button
+                  onClick={fetchUsers}
+                  disabled={usersLoading}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 disabled:bg-gray-400 transition-colors"
+                >
+                  {usersLoading ? "Yükleniyor..." : "Yenile"}
+                </button>
+              </div>
+
+              {usersLoading ? (
+                <div className="text-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                  <p className="mt-2 text-gray-600">Üyeler yükleniyor...</p>
+                </div>
+              ) : users.length === 0 ? (
+                <div className="bg-white rounded-lg shadow-md p-12 text-center text-gray-500">
+                  Henüz kayıtlı üye yok.
+                </div>
+              ) : (
+                <>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-sm text-blue-800">
+                    Toplam <strong>{users.length}</strong> üye
+                  </div>
+                  <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-gray-50 border-b">
+                          <tr>
+                            <th className="px-4 py-3 text-left font-semibold text-gray-700">Ad Soyad</th>
+                            <th className="px-4 py-3 text-left font-semibold text-gray-700">E-posta</th>
+                            <th className="px-4 py-3 text-left font-semibold text-gray-700">Kayıt Tarihi</th>
+                            <th className="px-4 py-3 text-left font-semibold text-gray-700">Referral Kodu</th>
+                            <th className="px-4 py-3 text-right font-semibold text-gray-700">Sipariş</th>
+                            <th className="px-4 py-3 text-right font-semibold text-gray-700">Toplam Harcama</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {users.map((u) => (
+                            <tr key={u.id} className="hover:bg-gray-50 transition-colors">
+                              <td className="px-4 py-3 font-medium text-gray-900">{u.name}</td>
+                              <td className="px-4 py-3 text-gray-600">{u.email}</td>
+                              <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
+                                {new Date(u.createdAt).toLocaleDateString("tr-TR", {
+                                  day: "2-digit",
+                                  month: "2-digit",
+                                  year: "numeric",
+                                })}
+                              </td>
+                              <td className="px-4 py-3">
+                                <span className="font-mono text-xs bg-gray-100 px-2 py-0.5 rounded">
+                                  {u.referralCode}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                <span className="text-gray-700">{u.paidOrderCount}</span>
+                                {u.orderCount !== u.paidOrderCount && (
+                                  <span className="text-gray-400 text-xs ml-1">/ {u.orderCount}</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-right font-semibold text-green-700">
+                                {u.totalSpend > 0 ? `${u.totalSpend.toFixed(2)} ₺` : "—"}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </>
               )}
             </div>
           )}

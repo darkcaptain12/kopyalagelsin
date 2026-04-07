@@ -47,7 +47,8 @@ export async function readBlobJson<T>(
     }
     
     // Fetch the JSON content from the blob URL
-    const response = await fetch(blob.url);
+    // Use no-store to bypass CDN cache — otherwise overwritten blobs still return old content
+    const response = await fetch(blob.url, { cache: "no-store" });
     if (!response.ok) {
       if (response.status === 404) {
         return null;

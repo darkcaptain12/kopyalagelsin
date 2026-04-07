@@ -4,8 +4,19 @@ import { setSessionCookie } from "@/lib/auth";
 import { getConfig } from "@/lib/config";
 import { createCoupon } from "@/lib/couponsStore";
 import { getUserByReferralCode } from "@/lib/usersStore";
+import { checkRateLimit, getIpFromHeaders } from "@/lib/rateLimit";
 
 export async function POST(request: NextRequest) {
+  // Rate limiting: 5 kayıt / 30 dakika / IP
+  const ip = getIpFromHeaders(request.headers);
+  const rl = checkRateLimit(`auth:register:${ip}`, 5, 30 * 60 * 1000);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: `Çok fazla kayıt denemesi. ${rl.retryAfter} saniye bekleyin.` },
+      { status: 429 }
+    );
+  }
+
   try {
     const body = await request.json();
     const { name, email, password, referredByCode } = body;

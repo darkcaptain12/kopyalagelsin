@@ -36,6 +36,7 @@ export interface Order {
   totalAmount: number; // Final amount after discount and KDV
   paytrStatus: PaytrStatus;
   paytrTransactionId?: string;
+  mailSent?: boolean; // Başarılı ödeme bildirimi gönderildi mi (duplicate önleme)
 }
 
 // Storage configuration
@@ -50,14 +51,11 @@ const isVercel =
 // Force Blob Storage on Vercel, allow override via env var for local testing
 const USE_BLOB_STORAGE = isVercel || process.env.USE_BLOB_STORAGE === "1";
 
-// Log storage method for debugging
-if (typeof window === "undefined") { // Server-side only
+// Storage konfigürasyonu sadece development'ta loglanır
+if (typeof window === "undefined" && process.env.NODE_ENV === "development") {
   console.log("Orders storage configuration:", {
     isVercel,
     useBlobStorage: USE_BLOB_STORAGE,
-    vercelEnv: process.env.VERCEL,
-    vercelEnvVar: process.env.VERCEL_ENV,
-    cwd: process.cwd(),
   });
 }
 
@@ -197,6 +195,15 @@ export async function updateOrderStatus(
   
   await writeOrdersFile(orders);
   return orders[orderIndex];
+}
+
+export async function markMailSent(id: string): Promise<void> {
+  const orders = await readOrdersFile();
+  const idx = orders.findIndex((o) => o.id === id);
+  if (idx !== -1) {
+    orders[idx].mailSent = true;
+    await writeOrdersFile(orders);
+  }
 }
 
 export async function clearAllOrders(): Promise<number> {

@@ -12,6 +12,8 @@ import type { Size, Color, Side, BindingType } from "@/lib/pricing";
 import type { Coupon } from "@/lib/couponsStore";
 import { calculateDiscount } from "@/lib/discounts";
 import type { User } from "@/lib/usersStore";
+import PdfThumbnail from "@/components/PdfThumbnail";
+import CorporateContact from "@/components/CorporateContact";
 
 // API'den dönen user objesi için tip
 interface APIUser {
@@ -948,6 +950,27 @@ export default function OrderForm() {
                       )}
                     </label>
                   </div>
+
+                  {/* PDF Kapak Önizlemesi */}
+                  {pdfFile && (
+                    <div className="mt-4 flex items-start gap-4 p-4 bg-blue-50 border border-blue-100 rounded-lg">
+                      <PdfThumbnail file={pdfFile} width={90} className="flex-shrink-0 shadow-sm" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-gray-700 mb-1">Dosya Önizlemesi</p>
+                        <p className="text-sm font-medium text-gray-900 truncate">{pdfFile.name}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {(pdfFile.size / 1024 / 1024).toFixed(2)} MB
+                          {pdfPageCount ? ` · ${pdfPageCount} sayfa` : ""}
+                        </p>
+                        <p className="text-[11px] text-blue-600 mt-1.5 flex items-center gap-1">
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          PDF başarıyla yüklendi
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1112,7 +1135,7 @@ export default function OrderForm() {
             )}
           </div>
 
-          {/* Price Summary */}
+          {/* Price Summary + Corporate Contact */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg shadow-lg p-6 sticky top-20">
               <h3 className="text-xl font-semibold mb-4">Canlı Fiyat Hesaplama</h3>
@@ -1192,6 +1215,9 @@ export default function OrderForm() {
                 </p>
               )}
             </div>
+
+            {/* Kurumsal Baskı İletişim */}
+            <CorporateContact />
           </div>
         </div>
       </div>

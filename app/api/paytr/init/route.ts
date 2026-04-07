@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { checkRateLimit, getIpFromHeaders } from "@/lib/rateLimit";
 import { getConfig } from "@/lib/config";
 import { calculateTotals, type Size, type Color, type Side, type BindingType } from "@/lib/pricing";
 import { createOrder } from "@/lib/ordersStore";
@@ -38,6 +39,16 @@ interface RequestBody {
 }
 
 export async function POST(request: NextRequest) {
+  // Rate limiting: 8 ödeme başlatma / 10 dakika / IP
+  const ip = getIpFromHeaders(request.headers);
+  const rl = checkRateLimit(`paytr:init:${ip}`, 8, 10 * 60 * 1000);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: `Çok fazla ödeme denemesi. ${rl.retryAfter} saniye bekleyin.` },
+      { status: 429 }
+    );
+  }
+
   try {
     const body: RequestBody = await request.json();
     const config = await getConfig();

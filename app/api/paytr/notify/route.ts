@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { updateOrderStatus, getAllOrders } from "@/lib/ordersStore";
+import { updateOrderStatus, getAllOrders, markMailSent } from "@/lib/ordersStore";
 import { incrementCouponUsage } from "@/lib/couponsStore";
 import { getUserById } from "@/lib/usersStore";
 import { getConfig } from "@/lib/config";
 import { createCoupon } from "@/lib/couponsStore";
 import { verifyPaytrNotificationHash } from "@/lib/paytr";
+import { sendOrderSuccessEmail } from "@/lib/mailer";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 30;
 
 /**
  * PayTR Bildirim URL (Notification Callback)
@@ -116,7 +118,15 @@ export async function POST(request: NextRequest) {
     // Update order status based on payment result
     if (status === "success") {
       // Mark order as paid
-      await updateOrderStatus(orderId, "paid", merchantOid);
+      const updatedOrder = await updateOrderStatus(orderId, "paid", merchantOid);
+
+      // Mail bildirimi — sadece daha önce gönderilmediyse (idempotent)
+      if (updatedOrder && !order.mailSent) {
+        await sendOrderSuccessEmail(updatedOrder);
+        await markMailSent(orderId).catch((e) =>
+          console.error("[Notify] markMailSent hatası:", e)
+        );
+      }
 
       // Increment coupon usage if coupon was used
       if (order.appliedCouponCode) {

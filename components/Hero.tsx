@@ -107,63 +107,25 @@ export default function Hero() {
       {/* Banner Background Image */}
       {banner.imageEnabled && bannerImagePath ? (
         <div className="relative w-full" style={{ aspectRatio: bannerAspectRatio }}>
-          <div className="absolute inset-0 z-0">
-            {bannerImageUrl && (bannerImageUrl.startsWith("http://") || bannerImageUrl.startsWith("https://")) ? (
-              <img
-                key={bannerImageUrl}
-                src={bannerImageUrl}
-                alt="Banner"
-                className="w-full h-full object-contain"
-                style={{ width: "100%", height: "100%", objectFit: "contain" }}
-                onError={(e) => {
-                  console.error("Banner image failed to load:", bannerImageUrl);
-                }}
-              />
-            ) : bannerImagePath ? (
-              <Image
-                key={bannerImagePath}
-                src={bannerImagePath}
-                alt="Banner"
-                fill
-                className="object-contain"
-                priority
-                sizes="100vw"
-              />
-            ) : null}
-            {/* Overlay for better text readability */}
-            <div
-              className="absolute inset-0"
-              style={{
-                background: `linear-gradient(to right, ${banner.backgroundColor}dd, ${banner.backgroundColorEnd}dd)`,
-              }}
+          {bannerImageUrl && (bannerImageUrl.startsWith("http://") || bannerImageUrl.startsWith("https://")) ? (
+            <img
+              key={bannerImageUrl}
+              src={bannerImageUrl}
+              alt="Banner"
+              className="w-full h-full object-cover"
+              onError={() => console.error("Banner image failed to load:", bannerImageUrl)}
             />
-          </div>
-          
-          {/* Content */}
-          <div
-            className="relative z-10 w-full h-full flex items-center justify-center"
-            style={{
-              color: banner.textColor,
-            }}
-          >
-            <div className="container mx-auto px-4">
-              <div className="max-w-3xl mx-auto text-center pt-12 md:pt-16">
-                <h1 className="text-4xl md:text-6xl font-bold mb-4 drop-shadow-lg">{banner.title}</h1>
-                <p className="text-xl md:text-2xl mb-6 md:mb-8 opacity-90 drop-shadow-md">{banner.subtitle}</p>
-                {banner.buttonLink && (
-                  <Link
-                    href={banner.buttonLink}
-                    className="inline-block bg-white px-5 py-2.5 md:px-8 md:py-4 rounded-lg font-semibold text-sm md:text-lg hover:opacity-90 transition shadow-lg mt-3 md:mt-4"
-                    style={{
-                      color: banner.backgroundColor,
-                    }}
-                  >
-                    {banner.buttonText || "Çıktı Siparişi Ver"}
-                  </Link>
-                )}
-              </div>
-            </div>
-          </div>
+          ) : (
+            <Image
+              key={bannerImagePath}
+              src={bannerImagePath}
+              alt="Banner"
+              fill
+              className="object-cover"
+              priority
+              sizes="100vw"
+            />
+          )}
         </div>
       ) : (
         <div

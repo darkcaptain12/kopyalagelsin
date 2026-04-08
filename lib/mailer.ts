@@ -396,3 +396,188 @@ export async function sendOrderSuccessEmail(order: Order): Promise<void> {
     console.error("[Mailer] Mail gönderilemedi:", error?.message || error);
   }
 }
+
+// ─────────────────────────────────────────────
+// MÜŞTERİ SİPARİŞ DURUM BİLDİRİMLERİ
+// ─────────────────────────────────────────────
+
+type CustomerStatus = "hazirlaniyor" | "kargolandi" | "iptal";
+
+interface StatusConfig {
+  subject: string;
+  badge: { bg: string; color: string; text: string };
+  title: string;
+  message: string;
+}
+
+function getStatusConfig(status: CustomerStatus): StatusConfig {
+  switch (status) {
+    case "hazirlaniyor":
+      return {
+        subject: "Siparişiniz Hazırlanıyor 🖨️",
+        badge: { bg: "#dbeafe", color: "#1d4ed8", text: "🖨️ Hazırlanıyor" },
+        title: "Siparişiniz Hazırlanıyor!",
+        message:
+          "Siparişinizi aldık ve ekibimiz baskınızı hazırlamaya başladı. " +
+          "Baskı tamamlandığında kargoya verilecek ve size tekrar bilgi verilecektir.",
+      };
+    case "kargolandi":
+      return {
+        subject: "Siparişiniz Kargoya Verildi 🚚",
+        badge: { bg: "#dcfce7", color: "#166534", text: "🚚 Kargoya Verildi" },
+        title: "Siparişiniz Yola Çıktı!",
+        message:
+          "Siparişiniz kargoya teslim edildi ve adresinize doğru yola çıktı. " +
+          "Kargo genellikle 1-3 iş günü içinde teslim edilmektedir.",
+      };
+    case "iptal":
+      return {
+        subject: "Siparişiniz İptal Edildi",
+        badge: { bg: "#fee2e2", color: "#991b1b", text: "✕ İptal Edildi" },
+        title: "Siparişiniz İptal Edildi",
+        message:
+          "Siparişiniz iptal edilmiştir. Ödeme yaptıysanız iade işlemi " +
+          "banka kanalıyla 3-5 iş günü içinde gerçekleştirilecektir. " +
+          "Sorularınız için bizimle iletişime geçebilirsiniz.",
+      };
+  }
+}
+
+function buildCustomerStatusHtml(order: Order, status: CustomerStatus): string {
+  const cfg = getStatusConfig(status);
+  const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.kopyalagelsin.com";
+
+  return `<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>${cfg.subject}</title>
+</head>
+<body style="font-family:'Segoe UI',Arial,sans-serif;background:#f1f5f9;margin:0;padding:24px;">
+  <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;
+              box-shadow:0 4px 20px rgba(0,0,0,0.08);">
+
+    <!-- HEADER -->
+    <div style="background:linear-gradient(135deg,#1e40af 0%,#3b82f6 100%);padding:28px 32px;">
+      <h1 style="color:#fff;margin:0;font-size:22px;font-weight:700;letter-spacing:-0.3px;">
+        Kopyala Gelsin
+      </h1>
+      <p style="color:#bfdbfe;margin:5px 0 0;font-size:13px;">Sipariş Güncelleme Bildirimi</p>
+    </div>
+
+    <!-- BADGE + MESAJ -->
+    <div style="padding:28px 32px 20px;">
+      <span style="display:inline-block;background:${cfg.badge.bg};color:${cfg.badge.color};
+                   padding:7px 18px;border-radius:20px;font-size:13px;font-weight:700;margin-bottom:18px;">
+        ${cfg.badge.text}
+      </span>
+      <h2 style="color:#1e293b;font-size:18px;font-weight:700;margin:0 0 12px;">${cfg.title}</h2>
+      <p style="color:#475569;font-size:14px;line-height:1.6;margin:0;">
+        Sayın <strong>${order.customerName}</strong>,<br><br>
+        ${cfg.message}
+      </p>
+    </div>
+
+    <!-- SİPARİŞ ÖZETİ -->
+    <div style="padding:0 32px 28px;">
+      <div style="background:#f8fafc;border-radius:10px;padding:16px 20px;border:1px solid #e2e8f0;">
+        <p style="color:#64748b;font-size:12px;font-weight:600;margin:0 0 10px;text-transform:uppercase;
+                  letter-spacing:0.5px;">Sipariş Özeti</p>
+        <table style="width:100%;border-collapse:collapse;">
+          <tr>
+            <td style="padding:5px 0;color:#64748b;font-size:13px;width:45%;">Sipariş No:</td>
+            <td style="padding:5px 0;color:#1e293b;font-size:12px;font-family:monospace;font-weight:600;">
+              ${order.id.substring(0, 18)}…
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:5px 0;color:#64748b;font-size:13px;">Sipariş Tarihi:</td>
+            <td style="padding:5px 0;color:#1e293b;font-size:13px;">${formatDate(order.createdAt)}</td>
+          </tr>
+          <tr>
+            <td style="padding:5px 0;color:#64748b;font-size:13px;">Toplam Tutar:</td>
+            <td style="padding:5px 0;color:#1d4ed8;font-size:14px;font-weight:700;">
+              ${order.totalAmount.toFixed(2)} ₺
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:5px 0;color:#64748b;font-size:13px;">Baskı:</td>
+            <td style="padding:5px 0;color:#1e293b;font-size:13px;">
+              ${order.pageCount} sayfa · ${order.size} · ${colorLabel(order.color)}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:5px 0;color:#64748b;font-size:13px;vertical-align:top;">Teslimat:</td>
+            <td style="padding:5px 0;color:#1e293b;font-size:13px;">${order.address}</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- ALT BİLGİ -->
+    <div style="background:#f8fafc;padding:16px 32px;text-align:center;border-top:1px solid #e2e8f0;">
+      <p style="color:#64748b;font-size:12px;margin:0 0 8px;">
+        Sorularınız için:
+        <a href="mailto:${process.env.SMTP_USER || "info@kopyalagelsin.com"}"
+           style="color:#1d4ed8;text-decoration:none;">
+          ${process.env.SMTP_USER || "info@kopyalagelsin.com"}
+        </a>
+      </p>
+      <p style="color:#94a3b8;font-size:11px;margin:0;">
+        Bu e-posta otomatik olarak gönderilmiştir.<br>
+        <a href="${siteUrl}" style="color:#94a3b8;">kopyalagelsin.com</a>
+      </p>
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
+function buildCustomerStatusText(order: Order, status: CustomerStatus): string {
+  const cfg = getStatusConfig(status);
+  return [
+    "═══════════════════════════════════════════",
+    `  ${cfg.subject.toUpperCase()} — KOPYALA GELSİN`,
+    "═══════════════════════════════════════════",
+    "",
+    `Sayın ${order.customerName},`,
+    "",
+    cfg.message,
+    "",
+    "SİPARİŞ BİLGİLERİ",
+    `  Sipariş No  : ${order.id}`,
+    `  Tarih       : ${formatDate(order.createdAt)}`,
+    `  Toplam      : ${order.totalAmount.toFixed(2)} ₺`,
+    `  Baskı       : ${order.pageCount} sayfa · ${order.size} · ${colorLabel(order.color)}`,
+    `  Adres       : ${order.address}`,
+    "",
+    "═══════════════════════════════════════════",
+  ].join("\n");
+}
+
+/**
+ * Sipariş durumu değişince müşteriye bildirim e-postası gönder.
+ * hazirlaniyor / kargolandi / iptal durumlarında tetiklenir.
+ */
+export async function sendOrderStatusEmail(
+  order: Order,
+  status: "hazirlaniyor" | "kargolandi" | "iptal"
+): Promise<void> {
+  try {
+    const transporter = createTransporter();
+    const cfg = getStatusConfig(status);
+
+    await transporter.sendMail({
+      from: `"Kopyala Gelsin" <${process.env.SMTP_USER}>`,
+      to: order.email,
+      subject: cfg.subject,
+      html: buildCustomerStatusHtml(order, status),
+      text: buildCustomerStatusText(order, status),
+    });
+
+    console.log(`[Mailer] Müşteri bildirim maili gönderildi: ${order.id} → ${status}`);
+  } catch (error: any) {
+    console.error("[Mailer] Müşteri mail gönderilemedi:", error?.message || error);
+  }
+}

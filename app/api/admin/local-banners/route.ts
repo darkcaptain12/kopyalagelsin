@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { readdirSync, statSync } from "fs";
+import { requireAdminAuth } from "@/lib/adminAuth";
 import path from "path";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +23,12 @@ const BANNER_DIRS = [
  * public/kopyalagelsin_banner ve public/banners klasörlerindeki
  * resimleri listeler. GitHub'dan yüklenen dosyalar otomatik görünür.
  */
-export async function GET() {
+import { NextRequest } from "next/server";
+
+export async function GET(request: NextRequest) {
+  const authError = requireAdminAuth(request);
+  if (authError) return authError;
+
   try {
     const allBanners: { filename: string; path: string; folder: string }[] = [];
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readFile } from "fs/promises";
+import { requireAdminAuth } from "@/lib/adminAuth";
 import { existsSync } from "fs";
 import path from "path";
 import os from "os";
@@ -23,6 +24,9 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { filePath: string } }
 ) {
+  const authError = requireAdminAuth(request);
+  if (authError) return authError;
+
   try {
     const filePath = decodeURIComponent(params.filePath);
     const fullPath = path.join(UPLOAD_DIR, filePath);

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
+import { requireAdminAuth } from "@/lib/adminAuth";
 import { existsSync } from "fs";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
@@ -13,6 +14,9 @@ async function ensureBannerDir(): Promise<void> {
 }
 
 export async function POST(request: NextRequest) {
+  const authError = requireAdminAuth(request);
+  if (authError) return authError;
+
   try {
     const formData = await request.formData();
     const file = formData.get("image") as File;

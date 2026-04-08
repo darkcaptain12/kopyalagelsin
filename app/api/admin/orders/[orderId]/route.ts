@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { updateOrderAdminStatus, PaytrStatus } from "@/lib/ordersStore";
 import { sendOrderStatusEmail } from "@/lib/mailer";
+import { requireAdminAuth } from "@/lib/adminAuth";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,9 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: { orderId: string } }
 ) {
+  const authError = requireAdminAuth(request);
+  if (authError) return authError;
+
   try {
     const { status } = await request.json();
 

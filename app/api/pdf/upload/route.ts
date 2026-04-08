@@ -81,10 +81,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error("Error uploading PDF:", error);
     return NextResponse.json(
-      {
-        error: error.message || "PDF yükleme başarısız oldu.",
-        details: error.stack,
-      },
+      { error: "PDF yükleme başarısız oldu." },
       { status: 500 }
     );
   }

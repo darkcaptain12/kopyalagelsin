@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { clearAllOrders } from "@/lib/ordersStore";
+import { requireAdminAuth } from "@/lib/adminAuth";
 import { addLog } from "@/lib/logStore";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
+  const authError = requireAdminAuth(request);
+  if (authError) return authError;
+
   try {
     const body = await request.json();
     const { confirm, adminUser } = body;

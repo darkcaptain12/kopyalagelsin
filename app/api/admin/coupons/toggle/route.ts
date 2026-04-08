@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCouponByCode, deactivateCoupon } from "@/lib/couponsStore";
+import { requireAdminAuth } from "@/lib/adminAuth";
 import { readFile, writeFile } from "fs/promises";
 import path from "path";
 import type { Coupon } from "@/lib/couponsStore";
@@ -7,6 +8,9 @@ import type { Coupon } from "@/lib/couponsStore";
 const COUPONS_FILE = path.join(process.cwd(), "data", "coupons.json");
 
 export async function POST(request: NextRequest) {
+  const authError = requireAdminAuth(request);
+  if (authError) return authError;
+
   try {
     const { code, isActive } = await request.json();
 

@@ -71,14 +71,17 @@ export default function AdminPage() {
     }
   };
   
-  // Initial load
+  // Initial load — cookie ile oturum kontrolü
   useEffect(() => {
-    const authStatus = sessionStorage.getItem("admin_authenticated");
-    if (authStatus === "true") {
-      setIsAuthenticated(true);
-    } else {
-      setLoading(false);
-    }
+    fetch("/api/admin/me")
+      .then((r) => {
+        if (r.ok) {
+          setIsAuthenticated(true);
+        } else {
+          setLoading(false);
+        }
+      })
+      .catch(() => setLoading(false));
   }, []);
   
   // Load data after authentication and when filters change
@@ -163,7 +166,6 @@ export default function AdminPage() {
 
       if (response.ok) {
         setIsAuthenticated(true);
-        sessionStorage.setItem("admin_authenticated", "true");
         fetchOrders();
         fetchConfig();
       } else {
@@ -372,8 +374,9 @@ export default function AdminPage() {
             <h1 className="text-2xl font-bold text-gray-900">Admin Paneli</h1>
             <button
               onClick={() => {
-                sessionStorage.removeItem("admin_authenticated");
-                setIsAuthenticated(false);
+                fetch("/api/admin/me", { method: "POST" }).finally(() => {
+                  setIsAuthenticated(false);
+                });
               }}
               className="text-sm text-gray-600 hover:text-gray-900"
             >

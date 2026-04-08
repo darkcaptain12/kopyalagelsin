@@ -1,12 +1,15 @@
-import { put, list } from "@vercel/blob";
+import { Redis } from "@upstash/redis";
 
 /**
- * Helper for storing JSON data in Vercel Blob Storage
- * Used for orders, users, coupons, and config files
- * 
- * Note: @vercel/blob v2.0.0 doesn't export 'get' method.
- * We use 'list' to find blobs by prefix, then fetch by URL.
+ * JSON data storage via Upstash Redis
+ * Replaces Vercel Blob for config, orders, users, coupons
+ * PDF files still use Vercel Blob (pdfStorage.ts)
  */
+
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL!,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+});
 
 const BLOB_PREFIX = process.env.BLOB_STORAGE_PREFIX || "app-data";
 
@@ -15,120 +18,57 @@ export interface BlobJsonStorageOptions {
 }
 
 /**
- * Read JSON data from Vercel Blob Storage
- * Uses list to find the blob by path, then fetches the URL
+ * Read JSON data from Redis
  */
 export async function readBlobJson<T>(
   filename: string,
   options?: BlobJsonStorageOptions
 ): Promise<T | null> {
+  const prefix = options?.prefix || BLOB_PREFIX;
+  const key = `${prefix}:${filename}`;
   try {
-    const prefix = options?.prefix || BLOB_PREFIX;
-    const blobPath = `${prefix}/${filename}`;
-    
-    // List blobs with the prefix to find our file
-    const { blobs } = await list({
-      prefix: `${prefix}/`,
-      limit: 100, // Should be enough for JSON files
-    });
-    
-    if (!blobs || blobs.length === 0) {
-      return null;
-    }
-    
-    // Find exact match by pathname
-    const blob = blobs.find(b => {
-      // Match exact path or path with same filename
-      return b.pathname === blobPath || b.pathname.endsWith(`/${filename}`);
-    });
-    
-    if (!blob) {
-      return null;
-    }
-    
-    // Fetch the JSON content from the blob URL
-    // Use no-store to bypass CDN cache — otherwise overwritten blobs still return old content
-    const response = await fetch(blob.url, { cache: "no-store" });
-    if (!response.ok) {
-      if (response.status === 404) {
-        return null;
-      }
-      throw new Error(`Failed to fetch blob: ${response.statusText}`);
-    }
-    
-    const text = await response.text();
-    return JSON.parse(text) as T;
+    const data = await redis.get<T>(key);
+    return data ?? null;
   } catch (error: any) {
-    // If blob doesn't exist, return null (not an error)
-    if (error.statusCode === 404 || 
-        error.message?.includes("not found") || 
-        error.message?.includes("404") ||
-        error.message?.includes("Failed to fetch")) {
-      return null;
-    }
-    console.error(`Error reading blob ${filename}:`, error);
+    console.error(`Error reading Redis key ${key}:`, error);
     throw error;
   }
 }
 
 /**
- * Write JSON data to Vercel Blob Storage
- * Returns the blob URL for future reference
+ * Write JSON data to Redis
+ * Returns the key as identifier (replaces blob URL)
  */
 export async function writeBlobJson<T>(
   filename: string,
   data: T,
   options?: BlobJsonStorageOptions
 ): Promise<string> {
+  const prefix = options?.prefix || BLOB_PREFIX;
+  const key = `${prefix}:${filename}`;
   try {
-    const prefix = options?.prefix || BLOB_PREFIX;
-    const blobPath = `${prefix}/${filename}`;
-    const jsonString = JSON.stringify(data, null, 2);
-    const buffer = Buffer.from(jsonString, "utf-8");
-    
-    // Use put with allowOverwrite to overwrite existing file
-    // Vercel Blob requires allowOverwrite: true to overwrite existing blobs
-    const blob = await put(blobPath, buffer, {
-      access: "public",
-      contentType: "application/json",
-      addRandomSuffix: false,
-      allowOverwrite: true, // Allow overwriting existing blobs
-    });
-    
-    return blob.url;
+    await redis.set(key, data);
+    return key;
   } catch (error: any) {
-    console.error(`Error writing blob ${filename}:`, error);
+    console.error(`Error writing Redis key ${key}:`, error);
     throw error;
   }
 }
 
 /**
- * Check if a blob exists
+ * Check if a key exists in Redis
  */
 export async function blobExists(
   filename: string,
   options?: BlobJsonStorageOptions
 ): Promise<boolean> {
+  const prefix = options?.prefix || BLOB_PREFIX;
+  const key = `${prefix}:${filename}`;
   try {
-    const prefix = options?.prefix || BLOB_PREFIX;
-    const blobPath = `${prefix}/${filename}`;
-    
-    const { blobs } = await list({
-      prefix: `${prefix}/`,
-      limit: 100,
-    });
-    
-    if (!blobs || blobs.length === 0) {
-      return false;
-    }
-    
-    return blobs.some(b => 
-      b.pathname === blobPath || b.pathname.endsWith(`/${filename}`)
-    );
+    const exists = await redis.exists(key);
+    return exists === 1;
   } catch (error: any) {
-    if (error.statusCode === 404 || error.message?.includes("not found")) {
-      return false;
-    }
-    throw error;
+    console.error(`Error checking Redis key ${key}:`, error);
+    return false;
   }
 }

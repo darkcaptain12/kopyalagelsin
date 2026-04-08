@@ -79,7 +79,7 @@ export function calculateDiscount(context: DiscountContext): DiscountResult {
     applied: true,
     discountPercent,
     discountAmount,
-    reason: coupon.type === "WELCOME" ? "WELCOME" : coupon.type === "REFERRAL" ? "REFERRAL" : "COUPON",
+    reason: coupon.type === "WELCOME" ? "WELCOME" : (coupon.type === "REFERRAL" || coupon.type === "REFERRED") ? "REFERRAL" : "COUPON",
     appliedCouponCode: coupon.code,
   };
 }

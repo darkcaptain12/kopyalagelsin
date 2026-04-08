@@ -3,7 +3,10 @@ import { existsSync } from "fs";
 import path from "path";
 import { readBlobJson, writeBlobJson } from "./blobStorage";
 
-export type CouponType = "WELCOME" | "REFERRAL";
+// WELCOME   = normal üyelik hoşgeldin kuponu
+// REFERRED  = davet linki ile üye olunca yeni kullanıcıya verilen kupon
+// REFERRAL  = davet ettiğin kişi ödeme yapınca sana (davete eden) verilen kupon
+export type CouponType = "WELCOME" | "REFERRED" | "REFERRAL";
 
 export interface Coupon {
   code: string; // must follow KOPYALAGELSİN pattern

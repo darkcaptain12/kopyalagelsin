@@ -62,22 +62,43 @@ export async function POST(request: NextRequest) {
       referredByUserId,
     });
 
-    // Create welcome coupon if enabled
+    // Yeni üye kuponu — kullanıcı yalnızca 1 tane yeni-üye kuponu alır:
+    // • Davet linki ile geldiyse + referral program açıksa → REFERRED kuponu
+    // • Davet linki yoksa + hoşgeldin indirimi açıksa       → WELCOME kuponu
     const config = await getConfig();
-    if (config.marketing.enableMemberWelcomeDiscount) {
-      const now = new Date();
+    const now = new Date();
+
+    if (referredByUserId && config.marketing.enableReferralProgram) {
+      // Davet linki ile üye olan kişiye REFERRED (davet edilen) kuponu ver
+      const validFrom = config.marketing.referralValidFrom
+        ? new Date(config.marketing.referralValidFrom)
+        : now;
+      const validUntil = config.marketing.referralValidUntil
+        ? new Date(config.marketing.referralValidUntil)
+        : null;
+      const isValidTime =
+        (!config.marketing.referralValidFrom || now >= validFrom) &&
+        (!config.marketing.referralValidUntil || now <= validUntil!);
+      if (isValidTime) {
+        await createCoupon({
+          userId: user.id,
+          type: "REFERRED",
+          discountPercent: config.marketing.referralDiscountPercent,
+          validFrom: validFrom.toISOString(),
+          validUntil: validUntil?.toISOString() || null,
+        });
+      }
+    } else if (config.marketing.enableMemberWelcomeDiscount) {
+      // Normal üyelik hoşgeldin kuponu
       const validFrom = config.marketing.memberWelcomeValidFrom
         ? new Date(config.marketing.memberWelcomeValidFrom)
         : now;
       const validUntil = config.marketing.memberWelcomeValidUntil
         ? new Date(config.marketing.memberWelcomeValidUntil)
         : null;
-
-      // Check if current time is within valid range
       const isValidTime =
         (!config.marketing.memberWelcomeValidFrom || now >= validFrom) &&
         (!config.marketing.memberWelcomeValidUntil || now <= validUntil!);
-
       if (isValidTime) {
         await createCoupon({
           userId: user.id,

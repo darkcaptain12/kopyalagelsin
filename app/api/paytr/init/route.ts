@@ -6,6 +6,7 @@ import { createOrder } from "@/lib/ordersStore";
 import { getSessionFromRequest } from "@/lib/auth";
 import { getUserById } from "@/lib/usersStore";
 import { getCouponByCode } from "@/lib/couponsStore";
+import { getAllOrders } from "@/lib/ordersStore";
 import { calculateDiscount, type DiscountResult } from "@/lib/discounts";
 import { createPaytrIframeToken, getClientIp } from "@/lib/paytr";
 
@@ -89,13 +90,31 @@ export async function POST(request: NextRequest) {
     if (body.couponCode && user) {
       const coupon = await getCouponByCode(body.couponCode);
       if (coupon) {
-        discountResult = calculateDiscount({
-          baseAmount,
-          user,
-          coupon,
-          config,
-          now: new Date(),
-        });
+        // Çifte kupon önleme: WELCOME veya REFERRED tipindeki kuponlar "yeni üye"
+        // avantajıdır; kullanıcı daha önce bu tipten birini zaten kullandıysa reddedilir.
+        // REFERRAL (davet eden kişinin kazandığı) kuponları bu kısıtlamaya tabi değildir.
+        let blocked = false;
+        if (coupon.type === "WELCOME" || coupon.type === "REFERRED") {
+          const allOrders = await getAllOrders();
+          const alreadyUsedNewMemberCoupon = allOrders.some(
+            (o) =>
+              o.userId === user!.id &&
+              o.appliedCouponCode !== null &&
+              o.appliedCouponCode !== undefined &&
+              o.paytrStatus === "paid"
+          );
+          if (alreadyUsedNewMemberCoupon) blocked = true;
+        }
+
+        if (!blocked) {
+          discountResult = calculateDiscount({
+            baseAmount,
+            user,
+            coupon,
+            config,
+            now: new Date(),
+          });
+        }
       }
     }
 

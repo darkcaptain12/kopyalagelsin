@@ -2,41 +2,59 @@ import { NextResponse } from "next/server";
 import { readdirSync, statSync } from "fs";
 import path from "path";
 
-const BANNER_DIR = path.join(process.cwd(), "public", "kopyalagelsin_banner");
+export const dynamic = "force-dynamic";
+
 const ALLOWED_EXT = [".jpg", ".jpeg", ".png", ".webp", ".gif"];
 
+// Taranacak klasörler ve URL prefix'leri
+const BANNER_DIRS = [
+  {
+    dir: path.join(process.cwd(), "public", "kopyalagelsin_banner"),
+    urlPrefix: "/kopyalagelsin_banner",
+  },
+  {
+    dir: path.join(process.cwd(), "public", "banners"),
+    urlPrefix: "/banners",
+  },
+];
+
 /**
- * public/kopyalagelsin_banner klasöründeki resimleri listeler.
- * Yeni dosya eklendikçe otomatik görünür.
+ * public/kopyalagelsin_banner ve public/banners klasörlerindeki
+ * resimleri listeler. GitHub'dan yüklenen dosyalar otomatik görünür.
  */
 export async function GET() {
   try {
-    let files: string[] = [];
+    const allBanners: { filename: string; path: string; folder: string }[] = [];
 
-    try {
-      files = readdirSync(BANNER_DIR);
-    } catch {
-      // Klasör yoksa boş döndür
-      return NextResponse.json({ banners: [] });
+    for (const { dir, urlPrefix } of BANNER_DIRS) {
+      let files: string[] = [];
+      try {
+        files = readdirSync(dir);
+      } catch {
+        continue; // Klasör yoksa atla
+      }
+
+      const filtered = files
+        .filter((f) => {
+          const ext = path.extname(f).toLowerCase();
+          if (!ALLOWED_EXT.includes(ext)) return false;
+          try {
+            return statSync(path.join(dir, f)).isFile();
+          } catch {
+            return false;
+          }
+        })
+        .sort()
+        .map((f) => ({
+          filename: f,
+          path: `${urlPrefix}/${f}`,
+          folder: urlPrefix.replace("/", ""),
+        }));
+
+      allBanners.push(...filtered);
     }
 
-    const banners = files
-      .filter((f) => {
-        const ext = path.extname(f).toLowerCase();
-        if (!ALLOWED_EXT.includes(ext)) return false;
-        try {
-          return statSync(path.join(BANNER_DIR, f)).isFile();
-        } catch {
-          return false;
-        }
-      })
-      .sort()
-      .map((f) => ({
-        filename: f,
-        path: `/kopyalagelsin_banner/${f}`,
-      }));
-
-    return NextResponse.json({ banners });
+    return NextResponse.json({ banners: allBanners });
   } catch (err: any) {
     return NextResponse.json({ banners: [], error: err.message });
   }

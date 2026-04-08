@@ -62,34 +62,10 @@ export async function POST(request: NextRequest) {
       referredByUserId,
     });
 
-    // Yeni üye kuponu — kullanıcı yalnızca 1 tane yeni-üye kuponu alır:
-    // • Davet linki ile geldiyse + referral program açıksa → REFERRED kuponu
-    // • Davet linki yoksa + hoşgeldin indirimi açıksa       → WELCOME kuponu
+    // Tüm yeni üyelere WELCOME kuponu ver (davet linki ile gelse de gelmese de)
     const config = await getConfig();
-    const now = new Date();
-
-    if (referredByUserId && config.marketing.enableReferralProgram) {
-      // Davet linki ile üye olan kişiye REFERRED (davet edilen) kuponu ver
-      const validFrom = config.marketing.referralValidFrom
-        ? new Date(config.marketing.referralValidFrom)
-        : now;
-      const validUntil = config.marketing.referralValidUntil
-        ? new Date(config.marketing.referralValidUntil)
-        : null;
-      const isValidTime =
-        (!config.marketing.referralValidFrom || now >= validFrom) &&
-        (!config.marketing.referralValidUntil || now <= validUntil!);
-      if (isValidTime) {
-        await createCoupon({
-          userId: user.id,
-          type: "REFERRED",
-          discountPercent: config.marketing.referralDiscountPercent,
-          validFrom: validFrom.toISOString(),
-          validUntil: validUntil?.toISOString() || null,
-        });
-      }
-    } else if (config.marketing.enableMemberWelcomeDiscount) {
-      // Normal üyelik hoşgeldin kuponu
+    if (config.marketing.enableMemberWelcomeDiscount) {
+      const now = new Date();
       const validFrom = config.marketing.memberWelcomeValidFrom
         ? new Date(config.marketing.memberWelcomeValidFrom)
         : now;

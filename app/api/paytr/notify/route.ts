@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { updateOrderStatus, getAllOrders, markMailSent } from "@/lib/ordersStore";
-import { incrementCouponUsage } from "@/lib/couponsStore";
+import { incrementCouponUsage, getUserCoupons, createCoupon } from "@/lib/couponsStore";
 import { getUserById } from "@/lib/usersStore";
 import { getConfig } from "@/lib/config";
-import { createCoupon } from "@/lib/couponsStore";
 import { verifyPaytrNotificationHash } from "@/lib/paytr";
 import { sendOrderSuccessEmail } from "@/lib/mailer";
 
@@ -152,27 +151,33 @@ export async function POST(request: NextRequest) {
             if (referrer) {
               const config = await getConfig();
               if (config.marketing.enableReferralProgram) {
-                const now = new Date();
-                const validFrom = config.marketing.referralValidFrom
-                  ? new Date(config.marketing.referralValidFrom)
-                  : now;
-                const validUntil = config.marketing.referralValidUntil
-                  ? new Date(config.marketing.referralValidUntil)
-                  : null;
+                // Limit: referrer can have at most 5 unused REFERRAL coupons at once
+                const MAX_ACTIVE_REFERRAL_COUPONS = 5;
+                const referrerCoupons = await getUserCoupons(referrer.id);
+                const activeReferralCount = referrerCoupons.filter(
+                  (c) => c.type === "REFERRAL" && c.isActive && c.usedCount < c.maxUses
+                ).length;
 
-                // Check if current time is within valid range
-                const isValidTime =
-                  (!config.marketing.referralValidFrom || now >= validFrom) &&
-                  (!config.marketing.referralValidUntil || now <= validUntil!);
-
-                if (isValidTime) {
-                  await createCoupon({
-                    userId: referrer.id,
-                    type: "REFERRAL",
-                    discountPercent: config.marketing.referralDiscountPercent,
-                    validFrom: validFrom.toISOString(),
-                    validUntil: validUntil?.toISOString() || null,
-                  });
+                if (activeReferralCount < MAX_ACTIVE_REFERRAL_COUPONS) {
+                  const now = new Date();
+                  const validFrom = config.marketing.referralValidFrom
+                    ? new Date(config.marketing.referralValidFrom)
+                    : now;
+                  const validUntil = config.marketing.referralValidUntil
+                    ? new Date(config.marketing.referralValidUntil)
+                    : null;
+                  const isValidTime =
+                    (!config.marketing.referralValidFrom || now >= validFrom) &&
+                    (!config.marketing.referralValidUntil || now <= validUntil!);
+                  if (isValidTime) {
+                    await createCoupon({
+                      userId: referrer.id,
+                      type: "REFERRAL",
+                      discountPercent: config.marketing.referralDiscountPercent,
+                      validFrom: validFrom.toISOString(),
+                      validUntil: validUntil?.toISOString() || null,
+                    });
+                  }
                 }
               }
             }

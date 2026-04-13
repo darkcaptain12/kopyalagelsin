@@ -101,7 +101,9 @@ function FlipKatalogCard({ item }: { item: KatalogItem }) {
           <h3 className="font-semibold text-gray-900 text-base mb-1 leading-snug line-clamp-2">
             {item.title}
           </h3>
-          <p className="text-xs text-gray-400 mb-4 truncate">{item.description || item.filename}</p>
+          {item.description && (
+            <p className="text-xs text-gray-400 mb-4 truncate">{item.description}</p>
+          )}
 
           <button
             onClick={() => setOpen(true)}

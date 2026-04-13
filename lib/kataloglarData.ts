@@ -15,7 +15,7 @@ const DEFAULT_TITLES: Record<string, string> = {
   "yaz_stajı.pdf": "Staj Dosyası",
 };
 
-export type KatalogMeta = Record<string, { title?: string; description?: string }>;
+export type KatalogMeta = Record<string, { title?: string; description?: string; disabled?: boolean }>;
 
 export interface KatalogItem {
   slug: string;
@@ -24,6 +24,7 @@ export interface KatalogItem {
   description: string;
   path: string;
   pinned: boolean;
+  disabled: boolean;
 }
 
 export function toTitle(filename: string): string {
@@ -62,6 +63,7 @@ export async function getKataloglar(): Promise<KatalogItem[]> {
     description: meta[f]?.description || "",
     path: `/kataloglar/${f}`,
     pinned: f === PINNED_FILENAME,
+    disabled: meta[f]?.disabled ?? false,
   }));
 
   // Sabit katalog önce, kalanlar alfabetik

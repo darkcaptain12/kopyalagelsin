@@ -21,13 +21,34 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ kataloglar: [] });
     }
 
+    let meta: KatalogMeta = {};
+    try {
+      meta = (await readBlobJson<KatalogMeta>("katalog-meta.json")) || {};
+    } catch { /* Redis yoksa boş */ }
+
+    const PINNED = "katalog_2026.pdf";
+    const DEFAULT_TITLES: Record<string, string> = {
+      "katalog_2026.pdf": "Ana Katalog",
+      "ibe_ekatalog.pdf": "İşletmelerde Meslek Eğitimi Dosyası",
+      "yaz_ekatalog.pdf": "Staj Dosyası",
+      "yaz_stajı.pdf": "Staj Dosyası",
+    };
+
     const kataloglar = files
       .filter((f) => f.toLowerCase().endsWith(".pdf"))
-      .sort()
+      .sort((a, b) => {
+        if (a === PINNED) return -1;
+        if (b === PINNED) return 1;
+        return a.localeCompare(b);
+      })
       .map((f) => ({
         filename: f,
         path: `/kataloglar/${f}`,
         size: statSync(path.join(KATALOG_DIR, f)).size,
+        title: meta[f]?.title || DEFAULT_TITLES[f] || f.replace(/\.pdf$/i, "").replace(/[-_]/g, " "),
+        description: meta[f]?.description || "",
+        disabled: meta[f]?.disabled ?? false,
+        pinned: f === PINNED,
       }));
 
     return NextResponse.json({ kataloglar });
@@ -41,7 +62,7 @@ export async function PATCH(request: NextRequest) {
   if (authError) return authError;
 
   try {
-    const { filename, title, description } = await request.json();
+    const { filename, title, description, disabled } = await request.json();
 
     if (!filename || !filename.toLowerCase().endsWith(".pdf")) {
       return NextResponse.json({ error: "Geçersiz dosya adı." }, { status: 400 });
@@ -49,8 +70,10 @@ export async function PATCH(request: NextRequest) {
 
     const meta = (await readBlobJson<KatalogMeta>("katalog-meta.json")) || {};
     meta[filename] = {
-      title: (title || "").trim() || undefined,
-      description: (description || "").trim() || undefined,
+      ...meta[filename],
+      ...(title !== undefined ? { title: (title || "").trim() || undefined } : {}),
+      ...(description !== undefined ? { description: (description || "").trim() || undefined } : {}),
+      ...(disabled !== undefined ? { disabled: Boolean(disabled) } : {}),
     };
     await writeBlobJson<KatalogMeta>("katalog-meta.json", meta);
 

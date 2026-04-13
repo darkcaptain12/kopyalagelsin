@@ -22,7 +22,7 @@ export default function AdminPage() {
   const [bannersLoading, setBannersLoading] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
-  const [kataloglar, setKataloglar] = useState<{filename: string; path: string; size: number; title?: string; description?: string}[]>([]);
+  const [kataloglar, setKataloglar] = useState<{filename: string; path: string; size: number; title?: string; description?: string; disabled?: boolean; pinned?: boolean}[]>([]);
   const [kataloglarLoading, setKataloglarLoading] = useState(false);
   const [editingKatalog, setEditingKatalog] = useState<string | null>(null);
   const [editKatalogTitle, setEditKatalogTitle] = useState("");
@@ -124,19 +124,9 @@ export default function AdminPage() {
   // Kataloglar tabına geçince listeyi çek
   const fetchKataloglar = () => {
     setKataloglarLoading(true);
-    // Use public API to get title/description metadata too
-    fetch("/api/kataloglar")
+    fetch("/api/admin/kataloglar")
       .then((r) => r.json())
-      .then((d) => {
-        // Merge with size from admin endpoint
-        fetch("/api/admin/kataloglar")
-          .then((r2) => r2.json())
-          .then((d2) => {
-            const sizeMap: Record<string, number> = {};
-            (d2.kataloglar || []).forEach((k: any) => { sizeMap[k.filename] = k.size; });
-            setKataloglar((d.kataloglar || []).map((k: any) => ({ ...k, size: sizeMap[k.filename] || 0 })));
-          });
-      })
+      .then((d) => setKataloglar(d.kataloglar || []))
       .catch(() => setKataloglar([]))
       .finally(() => setKataloglarLoading(false));
   };
@@ -2727,10 +2717,31 @@ export default function AdminPage() {
                       <div key={k.filename} className="py-4 space-y-3">
                         {/* Satır başlık */}
                         <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold text-gray-800 truncate">{k.title || k.filename}</p>
-                            <p className="text-xs text-gray-400">{k.filename} · {k.size ? (k.size / 1024 / 1024).toFixed(2) + " MB" : "—"}</p>
-                            {k.description && <p className="text-xs text-gray-500 mt-0.5">{k.description}</p>}
+                          <div className="min-w-0 flex items-start gap-2">
+                            {/* Aktif/Pasif toggle */}
+                            <button
+                              title={k.disabled ? "Pasif — tıkla aktif et" : "Aktif — tıkla pasif et"}
+                              onClick={async () => {
+                                const r = await fetch("/api/admin/kataloglar", {
+                                  method: "PATCH",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ filename: k.filename, disabled: !k.disabled }),
+                                });
+                                if (r.ok) fetchKataloglar();
+                              }}
+                              className={`mt-0.5 flex-shrink-0 w-9 h-5 rounded-full transition-colors relative ${k.disabled ? "bg-gray-300" : "bg-green-500"}`}
+                            >
+                              <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${k.disabled ? "left-0.5" : "left-4"}`} />
+                            </button>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <p className={`text-sm font-semibold truncate ${k.disabled ? "text-gray-400" : "text-gray-800"}`}>{k.title || k.filename}</p>
+                                {k.pinned && <span className="text-[10px] bg-blue-100 text-blue-600 font-bold px-1.5 py-0.5 rounded uppercase tracking-wide flex-shrink-0">Sabit</span>}
+                                {k.disabled && <span className="text-[10px] bg-gray-100 text-gray-400 font-bold px-1.5 py-0.5 rounded uppercase tracking-wide flex-shrink-0">Pasif</span>}
+                              </div>
+                              <p className="text-xs text-gray-400">{k.filename} · {k.size ? (k.size / 1024 / 1024).toFixed(2) + " MB" : "—"}</p>
+                              {k.description && <p className="text-xs text-gray-500 mt-0.5">{k.description}</p>}
+                            </div>
                           </div>
                           <div className="flex items-center gap-2 flex-shrink-0">
                             <a href={k.path} target="_blank" rel="noopener noreferrer"

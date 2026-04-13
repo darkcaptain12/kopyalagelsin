@@ -2722,12 +2722,27 @@ export default function AdminPage() {
                             <button
                               title={k.disabled ? "Pasif — tıkla aktif et" : "Aktif — tıkla pasif et"}
                               onClick={async () => {
+                                const newDisabled = !k.disabled;
+                                // Optimistic update
+                                setKataloglar((prev) =>
+                                  prev.map((item) =>
+                                    item.filename === k.filename ? { ...item, disabled: newDisabled } : item
+                                  )
+                                );
                                 const r = await fetch("/api/admin/kataloglar", {
                                   method: "PATCH",
                                   headers: { "Content-Type": "application/json" },
-                                  body: JSON.stringify({ filename: k.filename, disabled: !k.disabled }),
+                                  body: JSON.stringify({ filename: k.filename, disabled: newDisabled }),
                                 });
-                                if (r.ok) fetchKataloglar();
+                                if (!r.ok) {
+                                  // Hata olursa geri al
+                                  setKataloglar((prev) =>
+                                    prev.map((item) =>
+                                      item.filename === k.filename ? { ...item, disabled: k.disabled } : item
+                                    )
+                                  );
+                                  alert("Güncellenemedi.");
+                                }
                               }}
                               className={`mt-0.5 flex-shrink-0 w-9 h-5 rounded-full transition-colors relative ${k.disabled ? "bg-gray-300" : "bg-green-500"}`}
                             >

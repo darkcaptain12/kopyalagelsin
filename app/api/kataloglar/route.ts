@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { readdirSync, statSync } from "fs";
 import path from "path";
+import { readBlobJson } from "@/lib/blobStorage";
+
+export const dynamic = "force-dynamic";
 
 const KATALOG_DIR = path.join(process.cwd(), "public", "kataloglar");
 
@@ -13,9 +16,11 @@ function toTitle(filename: string): string {
     .trim();
 }
 
+export type KatalogMeta = Record<string, { title?: string; description?: string }>;
+
 /**
  * public/kataloglar klasöründeki PDF'leri listeler.
- * Yeni PDF eklenince otomatik gözükür.
+ * Başlık/açıklama için Redis'teki metadata ile birleştirir.
  */
 export async function GET() {
   try {
@@ -25,6 +30,9 @@ export async function GET() {
     } catch {
       return NextResponse.json({ kataloglar: [] });
     }
+
+    // Redis'ten metadata çek (yoksa boş dict)
+    const meta = (await readBlobJson<KatalogMeta>("katalog-meta.json")) || {};
 
     const kataloglar = files
       .filter((f) => {
@@ -39,7 +47,8 @@ export async function GET() {
       .map((f) => ({
         slug: f.replace(/\.pdf$/i, ""),
         filename: f,
-        title: toTitle(f),
+        title: meta[f]?.title || toTitle(f),
+        description: meta[f]?.description || "",
         path: `/kataloglar/${f}`,
       }));
 

@@ -5,7 +5,7 @@ import type { Order } from "@/lib/ordersStore";
 import type { AppConfig } from "@/lib/config";
 import type { Coupon } from "@/lib/couponsStore";
 
-type Tab = "orders" | "pricing" | "marketing" | "ui" | "campaign" | "users";
+type Tab = "orders" | "pricing" | "marketing" | "ui" | "campaign" | "users" | "kataloglar";
 
 export default function AdminPage() {
   const [password, setPassword] = useState("");
@@ -22,6 +22,17 @@ export default function AdminPage() {
   const [bannersLoading, setBannersLoading] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
+  const [kataloglar, setKataloglar] = useState<{filename: string; path: string; size: number; title?: string; description?: string}[]>([]);
+  const [kataloglarLoading, setKataloglarLoading] = useState(false);
+  const [katalogUploading, setKatalogUploading] = useState(false);
+  const [katalogTitle, setKatalogTitle] = useState("");
+  const [katalogFile, setKatalogFile] = useState<File | null>(null);
+  const [katalogMsg, setKatalogMsg] = useState("");
+  const [editingKatalog, setEditingKatalog] = useState<string | null>(null);
+  const [editKatalogTitle, setEditKatalogTitle] = useState("");
+  const [editKatalogDesc, setEditKatalogDesc] = useState("");
+  const [editKatalogSaving, setEditKatalogSaving] = useState(false);
+
   const [showClearOrdersModal, setShowClearOrdersModal] = useState(false);
   const [clearConfirmText, setClearConfirmText] = useState("");
   const [clearLoading, setClearLoading] = useState(false);
@@ -112,6 +123,32 @@ export default function AdminPage() {
         .catch(() => setLocalBanners([]))
         .finally(() => setBannersLoading(false));
     }
+  }, [activeTab, isAuthenticated]);
+
+  // Kataloglar tabına geçince listeyi çek
+  const fetchKataloglar = () => {
+    setKataloglarLoading(true);
+    // Use public API to get title/description metadata too
+    fetch("/api/kataloglar")
+      .then((r) => r.json())
+      .then((d) => {
+        // Merge with size from admin endpoint
+        fetch("/api/admin/kataloglar")
+          .then((r2) => r2.json())
+          .then((d2) => {
+            const sizeMap: Record<string, number> = {};
+            (d2.kataloglar || []).forEach((k: any) => { sizeMap[k.filename] = k.size; });
+            setKataloglar((d.kataloglar || []).map((k: any) => ({ ...k, size: sizeMap[k.filename] || 0 })));
+          });
+      })
+      .catch(() => setKataloglar([]))
+      .finally(() => setKataloglarLoading(false));
+  };
+  useEffect(() => {
+    if (activeTab === "kataloglar" && isAuthenticated) {
+      fetchKataloglar();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, isAuthenticated]);
 
   const fetchUsers = async () => {
@@ -445,6 +482,16 @@ export default function AdminPage() {
               }`}
             >
               Üyeler
+            </button>
+            <button
+              onClick={() => setActiveTab("kataloglar")}
+              className={`px-6 py-3 font-medium ${
+                activeTab === "kataloglar"
+                  ? "border-b-2 border-blue-600 text-blue-600"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              Kataloglar
             </button>
           </div>
 
@@ -2653,6 +2700,179 @@ export default function AdminPage() {
                   </div>
                 </>
               )}
+            </div>
+          )}
+
+          {/* Kataloglar Tab */}
+          {activeTab === "kataloglar" && (
+            <div className="space-y-6">
+              <h2 className="text-xl font-bold text-gray-800">Katalog Yönetimi</h2>
+
+              {/* Upload Formu */}
+              <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
+                <h3 className="font-semibold text-gray-700">Yeni Katalog Yükle</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-600 mb-1">Katalog Başlığı (dosya adı olarak kullanılır)</label>
+                    <input
+                      type="text"
+                      value={katalogTitle}
+                      onChange={(e) => setKatalogTitle(e.target.value)}
+                      placeholder="orn: Katalog_2026"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-600 mb-1">PDF Dosyası</label>
+                    <input
+                      type="file"
+                      accept=".pdf,application/pdf"
+                      onChange={(e) => setKatalogFile(e.target.files?.[0] || null)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+                {katalogMsg && (
+                  <p className={`text-sm ${katalogMsg.startsWith("✓") ? "text-green-600" : "text-red-600"}`}>{katalogMsg}</p>
+                )}
+                <button
+                  disabled={katalogUploading || !katalogFile}
+                  onClick={async () => {
+                    if (!katalogFile) return;
+                    setKatalogUploading(true);
+                    setKatalogMsg("");
+                    try {
+                      const fd = new FormData();
+                      fd.append("pdf", katalogFile);
+                      if (katalogTitle) fd.append("title", katalogTitle);
+                      const r = await fetch("/api/admin/kataloglar/upload", { method: "POST", body: fd });
+                      const d = await r.json();
+                      if (!r.ok) throw new Error(d.error || "Hata");
+                      setKatalogMsg(`✓ ${d.filename} yüklendi`);
+                      setKatalogTitle("");
+                      setKatalogFile(null);
+                      fetchKataloglar();
+                    } catch (e: any) {
+                      setKatalogMsg(e.message || "Yükleme başarısız");
+                    } finally {
+                      setKatalogUploading(false);
+                    }
+                  }}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-sm font-semibold rounded-lg transition-colors"
+                >
+                  {katalogUploading ? "Yükleniyor…" : "Yükle"}
+                </button>
+              </div>
+
+              {/* Mevcut Kataloglar */}
+              <div className="bg-white border border-gray-200 rounded-xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold text-gray-700">Mevcut Kataloglar</h3>
+                  <button onClick={fetchKataloglar} className="text-sm text-blue-600 hover:underline">Yenile</button>
+                </div>
+                {kataloglarLoading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto" />
+                  </div>
+                ) : kataloglar.length === 0 ? (
+                  <p className="text-sm text-gray-400 text-center py-6">Henüz katalog yok.</p>
+                ) : (
+                  <div className="divide-y divide-gray-100">
+                    {kataloglar.map((k) => (
+                      <div key={k.filename} className="py-4 space-y-3">
+                        {/* Satır başlık */}
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-gray-800 truncate">{k.title || k.filename}</p>
+                            <p className="text-xs text-gray-400">{k.filename} · {k.size ? (k.size / 1024 / 1024).toFixed(2) + " MB" : "—"}</p>
+                            {k.description && <p className="text-xs text-gray-500 mt-0.5">{k.description}</p>}
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <a href={k.path} target="_blank" rel="noopener noreferrer"
+                               className="text-xs text-blue-600 hover:underline">Görüntüle</a>
+                            <button
+                              onClick={() => {
+                                if (editingKatalog === k.filename) {
+                                  setEditingKatalog(null);
+                                } else {
+                                  setEditingKatalog(k.filename);
+                                  setEditKatalogTitle(k.title || "");
+                                  setEditKatalogDesc(k.description || "");
+                                }
+                              }}
+                              className="text-xs text-gray-500 hover:text-gray-800 font-medium border border-gray-200 px-2 py-0.5 rounded"
+                            >
+                              {editingKatalog === k.filename ? "İptal" : "Düzenle"}
+                            </button>
+                            <button
+                              onClick={async () => {
+                                if (!confirm(`"${k.filename}" silinsin mi?`)) return;
+                                const r = await fetch("/api/admin/kataloglar", {
+                                  method: "DELETE",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ filename: k.filename }),
+                                });
+                                if (r.ok) fetchKataloglar();
+                                else alert("Silinemedi.");
+                              }}
+                              className="text-xs text-red-500 hover:text-red-700 font-medium"
+                            >Sil</button>
+                          </div>
+                        </div>
+
+                        {/* İnline edit formu */}
+                        {editingKatalog === k.filename && (
+                          <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">Başlık</label>
+                              <input
+                                type="text"
+                                value={editKatalogTitle}
+                                onChange={(e) => setEditKatalogTitle(e.target.value)}
+                                placeholder={k.filename.replace(/\.pdf$/i, "").replace(/[-_]/g, " ")}
+                                className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">Açıklama</label>
+                              <textarea
+                                value={editKatalogDesc}
+                                onChange={(e) => setEditKatalogDesc(e.target.value)}
+                                rows={2}
+                                placeholder="Kısa açıklama..."
+                                className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                              />
+                            </div>
+                            <button
+                              disabled={editKatalogSaving}
+                              onClick={async () => {
+                                setEditKatalogSaving(true);
+                                try {
+                                  const r = await fetch("/api/admin/kataloglar", {
+                                    method: "PATCH",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ filename: k.filename, title: editKatalogTitle, description: editKatalogDesc }),
+                                  });
+                                  if (!r.ok) throw new Error();
+                                  setEditingKatalog(null);
+                                  fetchKataloglar();
+                                } catch {
+                                  alert("Kaydedilemedi.");
+                                } finally {
+                                  setEditKatalogSaving(false);
+                                }
+                              }}
+                              className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-sm font-semibold rounded-lg transition-colors"
+                            >
+                              {editKatalogSaving ? "Kaydediliyor…" : "Kaydet"}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

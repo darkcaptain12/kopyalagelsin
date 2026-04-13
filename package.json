@@ -18,8 +18,10 @@
     "nodemailer": "^8.0.4",
     "pdf-lib": "^1.17.1",
     "pdf-parse": "^1.1.1",
+    "pdfjs-dist": "^3.11.174",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-pageflip": "^2.0.3",
     "uuid": "^9.0.1"
   },
   "devDependencies": {

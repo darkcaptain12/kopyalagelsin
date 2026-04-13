@@ -2,6 +2,13 @@
 const nextConfig = {
   reactStrictMode: true,
 
+  webpack: (config) => {
+    // pdfjs-dist canvas & encoding shims
+    config.resolve.alias.canvas = false;
+    config.resolve.alias.encoding = false;
+    return config;
+  },
+
   async headers() {
     return [
       {

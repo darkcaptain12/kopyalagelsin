@@ -14,6 +14,7 @@ interface KatalogItem {
   title: string;
   description?: string;
   path: string;
+  pinned?: boolean;
 }
 
 interface FlipItem {
@@ -26,7 +27,7 @@ interface FlipItem {
 const FLIP_CATALOGS: FlipItem[] = [
   {
     slug: "ibe-ekatalog",
-    title: "IBE E-Katalog",
+    title: "İşletmelerde Meslek Eğitimi Dosyası",
     subtitle: "Dijital Flip Katalog",
     pdfPath: "/kataloglar/ibe_ekatalog.pdf",
   },
@@ -185,11 +186,18 @@ function KatalogCard({ item }: { item: KatalogItem }) {
           width={220}
           className="shadow-lg"
         />
-        {/* PDF rozeti */}
-        <div className="absolute top-3 right-3 bg-red-500 text-white text-[10px] font-bold
-                        px-2 py-0.5 rounded-md uppercase tracking-wide shadow-sm">
-          PDF
-        </div>
+        {/* Rozetler */}
+        {item.pinned ? (
+          <div className="absolute top-3 right-3 bg-blue-600 text-white text-[10px] font-bold
+                          px-2 py-0.5 rounded-md uppercase tracking-wide shadow-sm">
+            SABİT
+          </div>
+        ) : (
+          <div className="absolute top-3 right-3 bg-red-500 text-white text-[10px] font-bold
+                          px-2 py-0.5 rounded-md uppercase tracking-wide shadow-sm">
+            PDF
+          </div>
+        )}
       </div>
 
       {/* Kart içeriği */}

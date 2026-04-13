@@ -24,10 +24,6 @@ export default function AdminPage() {
   const [usersLoading, setUsersLoading] = useState(false);
   const [kataloglar, setKataloglar] = useState<{filename: string; path: string; size: number; title?: string; description?: string}[]>([]);
   const [kataloglarLoading, setKataloglarLoading] = useState(false);
-  const [katalogUploading, setKatalogUploading] = useState(false);
-  const [katalogTitle, setKatalogTitle] = useState("");
-  const [katalogFile, setKatalogFile] = useState<File | null>(null);
-  const [katalogMsg, setKatalogMsg] = useState("");
   const [editingKatalog, setEditingKatalog] = useState<string | null>(null);
   const [editKatalogTitle, setEditKatalogTitle] = useState("");
   const [editKatalogDesc, setEditKatalogDesc] = useState("");
@@ -2708,60 +2704,9 @@ export default function AdminPage() {
             <div className="space-y-6">
               <h2 className="text-xl font-bold text-gray-800">Katalog Yönetimi</h2>
 
-              {/* Upload Formu */}
-              <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
-                <h3 className="font-semibold text-gray-700">Yeni Katalog Yükle</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-600 mb-1">Katalog Başlığı (dosya adı olarak kullanılır)</label>
-                    <input
-                      type="text"
-                      value={katalogTitle}
-                      onChange={(e) => setKatalogTitle(e.target.value)}
-                      placeholder="orn: Katalog_2026"
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-600 mb-1">PDF Dosyası</label>
-                    <input
-                      type="file"
-                      accept=".pdf,application/pdf"
-                      onChange={(e) => setKatalogFile(e.target.files?.[0] || null)}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-                {katalogMsg && (
-                  <p className={`text-sm ${katalogMsg.startsWith("✓") ? "text-green-600" : "text-red-600"}`}>{katalogMsg}</p>
-                )}
-                <button
-                  disabled={katalogUploading || !katalogFile}
-                  onClick={async () => {
-                    if (!katalogFile) return;
-                    setKatalogUploading(true);
-                    setKatalogMsg("");
-                    try {
-                      const fd = new FormData();
-                      fd.append("pdf", katalogFile);
-                      if (katalogTitle) fd.append("title", katalogTitle);
-                      const r = await fetch("/api/admin/kataloglar/upload", { method: "POST", body: fd });
-                      const d = await r.json();
-                      if (!r.ok) throw new Error(d.error || "Hata");
-                      setKatalogMsg(`✓ ${d.filename} yüklendi`);
-                      setKatalogTitle("");
-                      setKatalogFile(null);
-                      fetchKataloglar();
-                    } catch (e: any) {
-                      setKatalogMsg(e.message || "Yükleme başarısız");
-                    } finally {
-                      setKatalogUploading(false);
-                    }
-                  }}
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-sm font-semibold rounded-lg transition-colors"
-                >
-                  {katalogUploading ? "Yükleniyor…" : "Yükle"}
-                </button>
+              {/* Bilgi notu */}
+              <div className="bg-blue-50 border border-blue-200 rounded-xl px-5 py-4 text-sm text-blue-700">
+                PDF dosyalarını <code className="font-mono bg-blue-100 px-1 rounded">public/kataloglar/</code> klasörüne ekleyin. Sayfa otomatik olarak bu klasörden okur.
               </div>
 
               {/* Mevcut Kataloglar */}
@@ -2804,19 +2749,6 @@ export default function AdminPage() {
                             >
                               {editingKatalog === k.filename ? "İptal" : "Düzenle"}
                             </button>
-                            <button
-                              onClick={async () => {
-                                if (!confirm(`"${k.filename}" silinsin mi?`)) return;
-                                const r = await fetch("/api/admin/kataloglar", {
-                                  method: "DELETE",
-                                  headers: { "Content-Type": "application/json" },
-                                  body: JSON.stringify({ filename: k.filename }),
-                                });
-                                if (r.ok) fetchKataloglar();
-                                else alert("Silinemedi.");
-                              }}
-                              className="text-xs text-red-500 hover:text-red-700 font-medium"
-                            >Sil</button>
                           </div>
                         </div>
 

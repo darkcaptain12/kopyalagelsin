@@ -4,13 +4,18 @@ import { readBlobJson } from "@/lib/blobStorage";
 
 const KATALOG_DIR = path.join(process.cwd(), "public", "kataloglar");
 
-export type KatalogMeta = Record<string, { title?: string; description?: string }>;
+/** katalog_2026.pdf her zaman en başta sabit */
+const PINNED_FILENAME = "katalog_2026.pdf";
 
-export interface KatalogFile {
-  filename: string;
-  blobUrl: string;
-  size: number;
-}
+/** Dosya adına göre varsayılan görünür başlıklar */
+const DEFAULT_TITLES: Record<string, string> = {
+  "katalog_2026.pdf": "Ana Katalog",
+  "ibe_ekatalog.pdf": "İşletmelerde Meslek Eğitimi Dosyası",
+  "yaz_ekatalog.pdf": "Staj Dosyası",
+  "yaz_stajı.pdf": "Staj Dosyası",
+};
+
+export type KatalogMeta = Record<string, { title?: string; description?: string }>;
 
 export interface KatalogItem {
   slug: string;
@@ -18,23 +23,26 @@ export interface KatalogItem {
   title: string;
   description: string;
   path: string;
+  pinned: boolean;
 }
 
 export function toTitle(filename: string): string {
-  return filename
-    .replace(/\.pdf$/i, "")
-    .replace(/[-_]/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase())
-    .trim();
+  return (
+    DEFAULT_TITLES[filename] ||
+    filename
+      .replace(/\.pdf$/i, "")
+      .replace(/[-_]/g, " ")
+      .replace(/\b\w/g, (c) => c.toUpperCase())
+      .trim()
+  );
 }
 
 export async function getKataloglar(): Promise<KatalogItem[]> {
   const meta = (await readBlobJson<KatalogMeta>("katalog-meta.json")) || {};
 
-  // Static files from public/kataloglar/
-  let staticFiles: string[] = [];
+  let files: string[] = [];
   try {
-    staticFiles = readdirSync(KATALOG_DIR).filter((f) => {
+    files = readdirSync(KATALOG_DIR).filter((f) => {
       if (!f.toLowerCase().endsWith(".pdf")) return false;
       try {
         return statSync(path.join(KATALOG_DIR, f)).isFile();
@@ -42,32 +50,23 @@ export async function getKataloglar(): Promise<KatalogItem[]> {
         return false;
       }
     });
-  } catch { /* directory doesn't exist */ }
+  } catch { /* klasör yok */ }
 
-  // Blob-uploaded catalogs from Redis
-  const blobList = (await readBlobJson<KatalogFile[]>("katalog-files.json")) || [];
-  const blobFilenames = new Set(blobList.map((k) => k.filename));
+  const kataloglar: KatalogItem[] = files.map((f) => ({
+    slug: f.replace(/\.pdf$/i, ""),
+    filename: f,
+    title: meta[f]?.title || toTitle(f),
+    description: meta[f]?.description || "",
+    path: `/kataloglar/${f}`,
+    pinned: f === PINNED_FILENAME,
+  }));
 
-  const staticKatalogs: KatalogItem[] = staticFiles
-    .filter((f) => !blobFilenames.has(f))
-    .sort()
-    .map((f) => ({
-      slug: f.replace(/\.pdf$/i, ""),
-      filename: f,
-      title: meta[f]?.title || toTitle(f),
-      description: meta[f]?.description || "",
-      path: `/kataloglar/${f}`,
-    }));
+  // Sabit katalog önce, kalanlar alfabetik
+  kataloglar.sort((a, b) => {
+    if (a.pinned && !b.pinned) return -1;
+    if (!a.pinned && b.pinned) return 1;
+    return a.filename.localeCompare(b.filename);
+  });
 
-  const blobKatalogs: KatalogItem[] = blobList
-    .sort((a, b) => a.filename.localeCompare(b.filename))
-    .map((k) => ({
-      slug: k.filename.replace(/\.pdf$/i, ""),
-      filename: k.filename,
-      title: meta[k.filename]?.title || toTitle(k.filename),
-      description: meta[k.filename]?.description || "",
-      path: k.blobUrl,
-    }));
-
-  return [...staticKatalogs, ...blobKatalogs];
+  return kataloglar;
 }

@@ -70,14 +70,15 @@ export default function PdfFlipBook({ pdfUrl }: Props) {
     async (pdf: pdfjsLib.PDFDocumentProxy, num: number, w: number): Promise<string> => {
       const page = await pdf.getPage(num);
       const baseVp = page.getViewport({ scale: 1 });
-      const scale = w / baseVp.width;
+      // Render at 2× display size for sharp text on all screens
+      const scale = (w / baseVp.width) * 2;
       const viewport = page.getViewport({ scale });
       const canvas = document.createElement("canvas");
       canvas.width = Math.floor(viewport.width);
       canvas.height = Math.floor(viewport.height);
       const ctx = canvas.getContext("2d")!;
       await page.render({ canvasContext: ctx, viewport }).promise;
-      return canvas.toDataURL("image/jpeg", 0.88);
+      return canvas.toDataURL("image/jpeg", 0.92);
     },
     []
   );

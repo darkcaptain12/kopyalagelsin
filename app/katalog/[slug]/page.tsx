@@ -3,27 +3,29 @@ import KatalogDetailClient from "./KatalogDetailClient";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import AnnouncementBar from "@/components/AnnouncementBar";
+import { getKataloglar, toTitle } from "@/lib/kataloglarData";
 
 interface Props {
   params: { slug: string };
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const title = params.slug
-    .replace(/-|_/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+  const kataloglar = await getKataloglar();
+  const katalog = kataloglar.find((k) => k.slug === params.slug);
+  const title = katalog?.title || toTitle(params.slug + ".pdf");
   return {
     title: `${title} | Kataloglar — Kopyala Gelsin`,
     description: `${title} kataloğunu çevrimiçi inceleyin.`,
   };
 }
 
-export default function KatalogDetailPage({ params }: Props) {
-  const pdfPath = `/kataloglar/${params.slug}.pdf`;
+export default async function KatalogDetailPage({ params }: Props) {
+  const kataloglar = await getKataloglar();
+  const katalog = kataloglar.find((k) => k.slug === params.slug);
 
-  const title = params.slug
-    .replace(/-|_/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+  // Fall back to static path for pre-deployed catalogs
+  const pdfPath = katalog?.path || `/kataloglar/${params.slug}.pdf`;
+  const title = katalog?.title || toTitle(params.slug + ".pdf");
 
   return (
     <div className="min-h-screen flex flex-col">

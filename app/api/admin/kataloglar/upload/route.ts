@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { writeFile, mkdir } from "fs/promises";
-import { existsSync } from "fs";
-import path from "path";
+import { put } from "@vercel/blob";
 import { requireAdminAuth } from "@/lib/adminAuth";
+import { readBlobJson, writeBlobJson } from "@/lib/blobStorage";
+import type { KatalogFile } from "@/lib/kataloglarData";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
-const KATALOG_DIR = path.join(process.cwd(), "public", "kataloglar");
 const MAX_SIZE = 100 * 1024 * 1024; // 100 MB
 
 export async function POST(request: NextRequest) {
@@ -31,21 +30,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Dosya 100 MB'dan küçük olmalı." }, { status: 400 });
     }
 
-    if (!existsSync(KATALOG_DIR)) {
-      await mkdir(KATALOG_DIR, { recursive: true });
-    }
-
-    // Dosya adı: verilen başlık varsa kullan, yoksa orijinal adı temizle
+    // Determine filename from title or original name
     const baseName = title
-      ? title.replace(/[^a-zA-Z0-9\-_\s]/g, "").replace(/\s+/g, "_")
+      ? title.replace(/[^a-zA-Z0-9\-_\s]/g, "").replace(/\s+/g, "_").trim()
       : file.name.replace(/\.pdf$/i, "").replace(/[^a-zA-Z0-9\-_]/g, "_");
-    const fileName = `${baseName}.pdf`;
-    const filePath = path.join(KATALOG_DIR, fileName);
+    const filename = `${baseName}.pdf`;
 
+    // Upload to Vercel Blob
     const buffer = Buffer.from(await file.arrayBuffer());
-    await writeFile(filePath, buffer);
+    const blob = await put(`kataloglar/${filename}`, buffer, {
+      access: "public",
+      contentType: "application/pdf",
+    });
 
-    return NextResponse.json({ success: true, filename: fileName, path: `/kataloglar/${fileName}` });
+    // Update Redis catalog list
+    const list = (await readBlobJson<KatalogFile[]>("katalog-files.json")) || [];
+    const filtered = list.filter((k) => k.filename !== filename);
+    filtered.push({ filename, blobUrl: blob.url, size: buffer.length });
+    await writeBlobJson("katalog-files.json", filtered);
+
+    return NextResponse.json({ success: true, filename, path: blob.url });
   } catch (e: any) {
     console.error("Katalog upload error:", e);
     return NextResponse.json({ error: "Yükleme başarısız." }, { status: 500 });

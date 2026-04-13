@@ -38,7 +38,10 @@ export function toTitle(filename: string): string {
 }
 
 export async function getKataloglar(): Promise<KatalogItem[]> {
-  const meta = (await readBlobJson<KatalogMeta>("katalog-meta.json")) || {};
+  let meta: KatalogMeta = {};
+  try {
+    meta = (await readBlobJson<KatalogMeta>("katalog-meta.json")) || {};
+  } catch { /* Redis yapılandırılmamışsa varsayılan başlıklar kullanılır */ }
 
   let files: string[] = [];
   try {

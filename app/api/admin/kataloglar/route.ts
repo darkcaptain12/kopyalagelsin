@@ -78,7 +78,8 @@ export async function PATCH(request: NextRequest) {
     await writeBlobJson<KatalogMeta>("katalog-meta.json", meta);
 
     return NextResponse.json({ success: true });
-  } catch {
-    return NextResponse.json({ error: "Metadata güncellenemedi." }, { status: 500 });
+  } catch (e: any) {
+    console.error("PATCH katalog meta error:", e?.message || e);
+    return NextResponse.json({ error: e?.message || "Metadata güncellenemedi." }, { status: 500 });
   }
 }

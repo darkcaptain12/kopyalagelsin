@@ -2729,19 +2729,29 @@ export default function AdminPage() {
                                     item.filename === k.filename ? { ...item, disabled: newDisabled } : item
                                   )
                                 );
-                                const r = await fetch("/api/admin/kataloglar", {
-                                  method: "PATCH",
-                                  headers: { "Content-Type": "application/json" },
-                                  body: JSON.stringify({ filename: k.filename, disabled: newDisabled }),
-                                });
-                                if (!r.ok) {
-                                  // Hata olursa geri al
+                                try {
+                                  const r = await fetch("/api/admin/kataloglar", {
+                                    method: "PATCH",
+                                    headers: { "Content-Type": "application/json" },
+                                    credentials: "include",
+                                    body: JSON.stringify({ filename: k.filename, disabled: newDisabled }),
+                                  });
+                                  if (!r.ok) {
+                                    const d = await r.json().catch(() => ({}));
+                                    setKataloglar((prev) =>
+                                      prev.map((item) =>
+                                        item.filename === k.filename ? { ...item, disabled: k.disabled } : item
+                                      )
+                                    );
+                                    alert(`Güncellenemedi (${r.status}): ${d.error || ""}`);
+                                  }
+                                } catch {
                                   setKataloglar((prev) =>
                                     prev.map((item) =>
                                       item.filename === k.filename ? { ...item, disabled: k.disabled } : item
                                     )
                                   );
-                                  alert("Güncellenemedi.");
+                                  alert("Bağlantı hatası. Tekrar deneyin.");
                                 }
                               }}
                               className={`mt-0.5 flex-shrink-0 w-9 h-5 rounded-full transition-colors relative ${k.disabled ? "bg-gray-300" : "bg-green-500"}`}

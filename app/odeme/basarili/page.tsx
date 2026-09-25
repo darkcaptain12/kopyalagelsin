@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import GoogleAdsConversion from "@/components/GoogleAdsConversion";
 
 function PaymentSuccessContent() {
   const searchParams = useSearchParams();
@@ -53,6 +54,7 @@ function PaymentSuccessContent() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <GoogleAdsConversion orderIdFromUrl={orderId} />
       <Navbar />
       <div className="container mx-auto px-4 py-16">
         <div className="max-w-2xl mx-auto">

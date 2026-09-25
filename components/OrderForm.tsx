@@ -476,6 +476,10 @@ export default function OrderForm() {
         // Set payment token to show iframe
         setPaymentToken(paymentData.token);
         setOrderId(paymentData.orderId || null);
+        // Google Ads dönüşümü için: başarılı sayfası sipariş ID'sini buradan okur
+        try {
+          if (paymentData.orderId) localStorage.setItem("kg_last_order_id", paymentData.orderId);
+        } catch {}
         setIsSubmitting(false);
         // Scroll to payment iframe
         setTimeout(() => {
